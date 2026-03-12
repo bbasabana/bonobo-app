@@ -1,0 +1,92 @@
+name: bonobo
+description: "Bonobo — Agrégateur d'Actualités Congolaises"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependency_overrides:
+  intl: ^0.20.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Navigation
+  go_router: ^14.6.1
+
+  # HTTP & Networking
+  dio: ^5.7.0
+
+  # Local Storage
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Connectivity
+  connectivity_plus: ^6.1.1
+
+  # Images
+  cached_network_image: ^3.4.1
+
+  # RSS Parsing
+  webfeed_plus: ^1.0.0
+
+  # PDF Export
+  pdf: ^3.11.1
+  printing: ^5.13.2
+
+  # Share
+  share_plus: ^10.1.3
+
+  # UI
+  shimmer: ^3.0.0
+  cupertino_icons: ^1.0.8
+
+  # Utils
+  timeago: ^3.7.0
+  intl: ^0.19.0
+  html: ^0.15.5
+  url_launcher: ^6.3.1
+  flutter_dotenv: ^5.2.1
+  equatable: ^2.0.5
+  google_fonts: ^6.2.1
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_native_splash: ^2.4.3
+  flutter_launcher_icons: ^0.14.3
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/logos/
+    - assets/sounds/
+    - .env
+
+# Splash natif (remplace le splash par défaut Flutter)
+flutter_native_splash:
+  color: "#0D1B12"
+  android_12:
+    color: "#0D1B12"
+
+# Icône application (logo_icon_white.png)
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo_icon_white.png"
+  adaptive_icon_background: "#1A1A2E"
+  adaptive_icon_foreground: "assets/images/logo_icon_white.png"
+  remove_alpha_ios: true
+
