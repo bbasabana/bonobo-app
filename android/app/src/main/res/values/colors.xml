@@ -2,4 +2,6 @@
 <resources>
     <color name="launch_background">#FF1A1A2E</color>
 	<color name="ic_launcher_background">#1A1A2E</color>
+    <!-- Couleur accent des notifications FCM — vert Bonobo -->
+    <color name="notification_color">#1EB45A</color>
 </resources>

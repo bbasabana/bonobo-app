@@ -129,9 +129,35 @@ class LocalStorage {
   static String? getUserRole() => _prefsBox.get('user_role');
   static Future<void> saveUserRole(String role) => _prefsBox.put('user_role', role);
 
+  static String? getUserId() => _prefsBox.get('user_id');
+  static Future<void> saveUserId(String id) => _prefsBox.put('user_id', id);
+
+  static String? getUserEmail() => _prefsBox.get('user_email');
+  static Future<void> saveUserEmail(String email) => _prefsBox.put('user_email', email);
+
+  static String? getDisplayName() => _prefsBox.get('display_name');
+  static Future<void> saveDisplayName(String name) => _prefsBox.put('display_name', name);
+
+  static String? getAvatarUrl() => _prefsBox.get('avatar_url');
+  static Future<void> saveAvatarUrl(String url) => _prefsBox.put('avatar_url', url);
+
+  /// ID anonyme pour les analytics (lecteurs non connectés).
+  static String getAnonymousId() {
+    var id = _prefsBox.get('anonymous_id');
+    if (id == null) {
+      id = 'anon_${DateTime.now().millisecondsSinceEpoch}';
+      _prefsBox.put('anonymous_id', id);
+    }
+    return id;
+  }
+
   static Future<void> logout() async {
     await _prefsBox.delete('user_token');
     await _prefsBox.delete('user_role');
+    await _prefsBox.delete('user_id');
+    await _prefsBox.delete('user_email');
+    await _prefsBox.delete('display_name');
+    await _prefsBox.delete('avatar_url');
   }
 
   // --- Translations ---
@@ -242,6 +268,32 @@ class LocalStorage {
 
   static Future<void> saveComments(String articleId, List<LocalComment> comments) async {
     await _reactionsBox.put('comments_$articleId', jsonEncode(comments.map((c) => c.toJson()).toList()));
+  }
+
+  // --- Marketing Promos ---
+
+  static String getMarketingStatus(String promoId) {
+    return _prefsBox.get('marketing_$promoId') ?? 'new';
+  }
+
+  static Future<void> saveMarketingStatus(String promoId, String status) async {
+    await _prefsBox.put('marketing_$promoId', status);
+    await _prefsBox.put('marketing_${promoId}_ts', DateTime.now().toIso8601String());
+  }
+
+  static DateTime? getLastMarketingTimestamp(String promoId) {
+    final ts = _prefsBox.get('marketing_${promoId}_ts');
+    return ts != null ? DateTime.tryParse(ts) : null;
+  }
+
+  // --- Splash Screen ---
+
+  static bool getSplashSeen() {
+    return _prefsBox.get('splash_seen') == 'true';
+  }
+
+  static Future<void> setSplashSeen() async {
+    await _prefsBox.put('splash_seen', 'true');
   }
 
   // --- Utils ---

@@ -6,6 +6,7 @@ import 'splash_screen.dart';
 import 'theme.dart';
 import '../core/providers/theme_provider.dart';
 import '../shared/widgets/connectivity_listener.dart';
+import '../shared/local_storage.dart';
 
 class BonoboApp extends ConsumerStatefulWidget {
   const BonoboApp({super.key});
@@ -17,7 +18,17 @@ class BonoboApp extends ConsumerStatefulWidget {
 class _BonoboAppState extends ConsumerState<BonoboApp> {
   bool _splashComplete = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Si le splash a déjà été vu, on passe directement à l'accueil
+    if (LocalStorage.getSplashSeen()) {
+      _splashComplete = true;
+    }
+  }
+
   void _onSplashComplete() {
+    LocalStorage.setSplashSeen();
     setState(() => _splashComplete = true);
   }
 
@@ -36,14 +47,17 @@ class _BonoboAppState extends ConsumerState<BonoboApp> {
         home: BonoboSplashScreen(onComplete: _onSplashComplete),
       );
     }
+
     final themeMode = ref.watch(themeProvider);
+    // Le router est maintenant un Provider Riverpod pour gérer les redirections auth.
+    final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(
       title: 'Bonobo',
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
-      routerConfig: appRouter,
+      routerConfig: router,
       debugShowCheckedModeBanner: false,
       locale: const Locale('fr'),
       supportedLocales: const [Locale('fr'), Locale('en')],
@@ -52,7 +66,8 @@ class _BonoboAppState extends ConsumerState<BonoboApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      builder: (context, child) => ConnectivityListener(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) =>
+          ConnectivityListener(child: child ?? const SizedBox.shrink()),
     );
   }
 }

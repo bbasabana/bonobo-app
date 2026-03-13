@@ -16,13 +16,42 @@ import '../../../shared/widgets/bonobo_article_image.dart';
 import '../../../shared/widgets/bonobo_soft_toast.dart';
 import '../../../shared/widgets/media_favicon.dart';
 
-class MediaDetailScreen extends ConsumerWidget {
+class MediaDetailScreen extends ConsumerStatefulWidget {
   final String sourceId;
 
   const MediaDetailScreen({super.key, required this.sourceId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MediaDetailScreen> createState() => _MediaDetailScreenState();
+}
+
+class _MediaDetailScreenState extends ConsumerState<MediaDetailScreen> {
+  String _searchQuery = '';
+  bool _isSearchOpen = false;
+  final _searchFocusNode = FocusNode();
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  static List<FeedNews> _filterArticles(List<FeedNews> articles, String query) {
+    if (query.trim().isEmpty) return articles;
+    final q = query.trim().toLowerCase();
+    final words = q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    return articles.where((a) {
+      final title = a.title.toLowerCase();
+      final excerpt = a.excerpt.toLowerCase();
+      return words.every((w) => title.contains(w) || excerpt.contains(w));
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sourceId = widget.sourceId;
     final source = MediaSources.findById(sourceId);
     if (source == null) {
       return Scaffold(
@@ -49,180 +78,252 @@ class MediaDetailScreen extends ConsumerWidget {
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: isDark ? const Color(0xFF0E1118) : const Color(0xFFF2F4F7),
-        body: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // ── Header avec favicon + infos média
-            SliverToBoxAdapter(
-              child: _MediaHeader(
-                source: source,
-                isSubscribed: isSubscribed,
-                statusBarH: statusBarH,
+        body: Column(
+          children: [
+            AnimatedCrossFade(
+              duration: const Duration(milliseconds: 220),
+              crossFadeState: _isSearchOpen ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+              firstChild: _MediaSearchBar(
                 isDark: isDark,
-                onSubscribeToggle: () {
-                    if (!isAuth) {
-                      BonoboSoftToast.show(context,
-                        message: 'Connectez-vous pour suivre ce média.',
-                        icon: Icons.lock_outline_rounded,
-                        iconColor: Colors.orangeAccent,
-                      );
-                      context.push('/compte');
-                      return;
-                    }
-                    ref.read(subscriptionProvider.notifier).toggle(sourceId);
-                  },
-                onOpenWebsite: () => _openWebsite(source),
+                sourceColor: source.color,
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                onChanged: (v) => setState(() => _searchQuery = v),
+                onClose: () {
+                  setState(() {
+                    _isSearchOpen = false;
+                    _searchQuery = '';
+                    _searchController.clear();
+                  });
+                },
               ),
+              secondChild: const SizedBox.shrink(),
             ),
-
-            // ── Articles
-            articlesAsync.when(
-              loading: () => SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (_, i) => _ArticleSkeleton(isDark: isDark, large: i < 2),
-                  childCount: 5,
-                ),
-              ),
-              error: (_, __) => SliverToBoxAdapter(
-                child: _EmptyState(
-                  icon: Icons.wifi_off_rounded,
-                  title: 'Indisponible hors connexion',
-                  subtitle: 'Les articles de ${source.name} s\'afficheront dès que la connexion sera rétablie.',
-                  isDark: isDark,
-                  sourceColor: source.color,
-                ),
-              ),
-              data: (articles) {
-                if (articles.isEmpty) {
-                  return SliverToBoxAdapter(
-                    child: _EmptyState(
-                      icon: Icons.article_outlined,
-                      title: 'Aucun article disponible',
-                      subtitle: 'Il n\'y a pas encore d\'articles de ${source.name} dans votre cache. Actualisez.',
-                      isDark: isDark,
-                      sourceColor: source.color,
-                    ),
-                  );
-                }
-
-                // Compteur d'articles dans l'en-tête
-                return SliverMainAxisGroup(
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(mediaDetailArticlesProvider(sourceId));
+                  await ref.read(mediaDetailArticlesProvider(sourceId).future);
+                },
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                   slivers: [
-                    // Section title
                     SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 3,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: source.color,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Actualités récentes',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 17,
-                                letterSpacing: -0.3,
-                                color: isDark ? Colors.white : AppColors.textPrimary,
-                              ),
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: source.color.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                '${articles.length} articles',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: source.color,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: _MediaHeader(
+                        source: source,
+                        isSubscribed: isSubscribed,
+                        statusBarH: statusBarH,
+                        isDark: isDark,
+                        onSubscribeToggle: () {
+                          if (!isAuth) {
+                            BonoboSoftToast.show(context,
+                              message: 'Connectez-vous pour suivre ce média.',
+                              icon: Icons.lock_outline_rounded,
+                              iconColor: Colors.orangeAccent,
+                            );
+                            context.push('/compte');
+                            return;
+                          }
+                          ref.read(subscriptionProvider.notifier).toggle(sourceId);
+                        },
+                        onOpenWebsite: () => _openWebsite(source),
                       ),
                     ),
-
-                    // Première carte — grande (image plein largeur)
-                    if (articles.isNotEmpty)
-                      SliverToBoxAdapter(
-                        child: _LargeArticleCard(
-                          article: articles[0],
-                          sourceColor: source.color,
+                    articlesAsync.when(
+                      loading: () => SliverMainAxisGroup(
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: _MediaDetailLoader(isDark: isDark),
+                          ),
+                          SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (_, i) => _ArticleSkeleton(isDark: isDark, large: i < 2),
+                              childCount: 5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      error: (_, __) => SliverToBoxAdapter(
+                        child: _EmptyState(
+                          icon: Icons.wifi_off_rounded,
+                          title: 'Indisponible hors connexion',
+                          subtitle: 'Les articles de ${source.name} s\'afficheront dès que la connexion sera rétablie.',
                           isDark: isDark,
+                          sourceColor: source.color,
                         ),
                       ),
+                      data: (articles) {
+                        final filtered = _filterArticles(articles, _searchQuery);
+                        if (filtered.isEmpty && articles.isNotEmpty) {
+                          return SliverToBoxAdapter(
+                            child: _EmptyState(
+                              icon: Icons.search_off_rounded,
+                              title: 'Aucun résultat',
+                              subtitle: 'Aucun article ne correspond à « $_searchQuery ». Modifiez les mots-clés.',
+                              isDark: isDark,
+                              sourceColor: source.color,
+                            ),
+                          );
+                        }
+                        if (filtered.isEmpty) {
+                          return SliverToBoxAdapter(
+                            child: _EmptyState(
+                              icon: Icons.article_outlined,
+                              title: 'Aucun article pour l\'instant',
+                              subtitle: 'Tirez vers le bas pour réessayer. Certains sites (ex. Grands Lacs, Scoop RDC) peuvent être lents.',
+                              isDark: isDark,
+                              sourceColor: source.color,
+                            ),
+                          );
+                        }
 
-                    // Deuxième carte — grande
-                    if (articles.length > 1)
-                      SliverToBoxAdapter(
-                        child: _LargeArticleCard(
-                          article: articles[1],
-                          sourceColor: source.color,
-                          isDark: isDark,
-                        ),
-                      ),
+                        final displayCount = filtered.length;
+                        final isFiltered = _searchQuery.trim().isNotEmpty;
 
-                    // Divider entre les grands et les petits
-                    if (articles.length > 2)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 3,
-                                height: 14,
-                                decoration: BoxDecoration(
-                                  color: source.color.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(2),
+                        return SliverMainAxisGroup(
+                          slivers: [
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 3,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: source.color,
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      isFiltered ? 'Résultats de recherche' : 'Actualités récentes',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 17,
+                                        letterSpacing: -0.3,
+                                        color: isDark ? Colors.white : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: source.color.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        isFiltered ? '$displayCount / ${articles.length}' : '$displayCount articles',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: source.color,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Autres articles',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: isDark ? Colors.white60 : AppColors.textSecondary,
+                            ),
+                            if (filtered.isNotEmpty)
+                              SliverToBoxAdapter(
+                                child: _LargeArticleCard(
+                                  article: filtered[0],
+                                  sourceColor: source.color,
+                                  isDark: isDark,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                    // Articles 2+ — cartes compactes horizontales
-                    if (articles.length > 2)
-                      SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (ctx, i) => _CompactArticleCard(
-                            article: articles[i + 2],
-                            sourceColor: source.color,
-                            isDark: isDark,
-                            index: i,
-                          ),
-                          childCount: articles.length - 2,
-                        ),
-                      ),
+                            if (filtered.length > 1)
+                              SliverToBoxAdapter(
+                                child: _LargeArticleCard(
+                                  article: filtered[1],
+                                  sourceColor: source.color,
+                                  isDark: isDark,
+                                ),
+                              ),
+                            if (filtered.length > 2)
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 3,
+                                        height: 14,
+                                        decoration: BoxDecoration(
+                                          color: source.color.withValues(alpha: 0.6),
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        'Autres articles',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                          color: isDark ? Colors.white60 : AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            if (filtered.length > 2)
+                              SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (ctx, i) => _CompactArticleCard(
+                                    article: filtered[i + 2],
+                                    sourceColor: source.color,
+                                    isDark: isDark,
+                                    index: i,
+                                  ),
+                                  childCount: filtered.length - 2,
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 40)),
                   ],
-                );
-              },
+                ),
+              ),
             ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
         ),
+        floatingActionButton: _isSearchOpen
+            ? null
+            : Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: source.color,
+                  boxShadow: [
+                    BoxShadow(
+                      color: source.color.withValues(alpha: 0.45),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() => _isSearchOpen = true);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _searchFocusNode.requestFocus();
+                      });
+                    },
+                    child: const Center(
+                      child: Icon(Icons.search_rounded, color: Colors.white, size: 24),
+                    ),
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -236,7 +337,7 @@ class MediaDetailScreen extends ConsumerWidget {
   }
 }
 
-// ─── Header média ─────────────────────────────────────────────────────────────
+// ─── Header média (compact) ───────────────────────────────────────────────────
 class _MediaHeader extends StatelessWidget {
   final MediaSource source;
   final bool isSubscribed;
@@ -272,7 +373,6 @@ class _MediaHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fond adaptatif : foncé en dark, blanc card avec légère teinte en clair
     final headerBg = isDark
         ? Color.lerp(const Color(0xFF111820), source.color, 0.06)!
         : Colors.white;
@@ -282,22 +382,21 @@ class _MediaHeader extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: headerBg,
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.05),
+            width: 1,
+          ),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // AppBar manuel
           SizedBox(
-            height: statusBarH + kToolbarHeight,
+            height: statusBarH + 48,
             child: Padding(
               padding: EdgeInsets.only(top: statusBarH),
               child: Row(
@@ -321,51 +420,42 @@ class _MediaHeader extends StatelessWidget {
             ),
           ),
 
-          // Favicon + nom + infos
+          // Favicon + nom + domaine (compact)
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Favicon grand format
                 MediaFavicon(
                   faviconUrl: source.faviconUrl,
                   fallbackInitials: source.initials,
                   fallbackColor: source.color,
-                  size: 72,
-                  borderRadius: 20,
+                  size: 52,
+                  borderRadius: 14,
                 ),
-                const SizedBox(width: 18),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nom du média
                       Text(
                         source.name,
                         style: TextStyle(
                           color: onHeader,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 24,
-                          letterSpacing: -0.5,
-                          height: 1.1,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 20,
+                          letterSpacing: -0.3,
+                          height: 1.15,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      // Domain
-                      Row(
-                        children: [
-                          Icon(Icons.link_rounded, size: 12, color: onHeaderSub),
-                          const SizedBox(width: 4),
-                          Text(
-                            _domain,
-                            style: TextStyle(
-                              color: onHeaderSub,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 2),
+                      Text(
+                        _domain,
+                        style: TextStyle(
+                          color: onHeaderSub,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -374,31 +464,26 @@ class _MediaHeader extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 20),
-
-          // Badges : pays + type de flux + catégories
+          // Badges sur une ligne
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: [
-                // Pays
                 _InfoBadge(
                   icon: Icons.flag_rounded,
                   label: source.countryLabel,
                   color: onHeader,
                   bgColor: onHeader.withValues(alpha: 0.1),
                 ),
-                // Type flux
                 _InfoBadge(
                   icon: Icons.rss_feed_rounded,
                   label: _feedTypeLabel,
                   color: AppColors.primaryGreenStart.withValues(alpha: 0.9),
                   bgColor: AppColors.primaryGreen.withValues(alpha: 0.15),
                 ),
-                // Catégories
-                ...source.categories.map(
+                ...source.categories.take(2).map(
                   (cat) => _InfoBadge(
                     label: cat,
                     color: source.color.withValues(alpha: 0.9),
@@ -409,61 +494,28 @@ class _MediaHeader extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
-          // Ligne de séparation + bouton S'abonner
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : source.color.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : source.color.withValues(alpha: 0.18),
-              ),
-            ),
+          // Bouton S'abonner (compact)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
             child: Row(
               children: [
-                // Expanded = contrainte correcte, plus d'overflow
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isSubscribed ? 'Vous suivez ce média' : 'Suivre ce média',
-                        style: TextStyle(
-                          color: onHeader,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isSubscribed
-                            ? 'Vous recevrez les nouvelles alertes'
-                            : 'Recevez les alertes de ${source.name}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: onHeaderSub,
-                          fontSize: 11,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    isSubscribed ? 'Vous suivez ce média' : 'Suivre ce média',
+                    style: TextStyle(
+                      color: onHeader,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                // Bouton S'abonner
                 GestureDetector(
                   onTap: onSubscribeToggle,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       gradient: isSubscribed
                           ? const LinearGradient(
@@ -473,25 +525,21 @@ class _MediaHeader extends StatelessWidget {
                             )
                           : null,
                       color: isSubscribed ? null : source.color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: Icon(
-                            isSubscribed
-                                ? Icons.notifications_active_rounded
-                                : Icons.notifications_none_rounded,
-                            key: ValueKey(isSubscribed),
-                            size: 16,
-                            color: isSubscribed
-                                ? Colors.white
-                                : (isDark ? Colors.white70 : source.color),
-                          ),
+                        Icon(
+                          isSubscribed
+                              ? Icons.notifications_active_rounded
+                              : Icons.notifications_none_rounded,
+                          size: 15,
+                          color: isSubscribed
+                              ? Colors.white
+                              : (isDark ? Colors.white70 : source.color),
                         ),
-                        const SizedBox(width: 7),
+                        const SizedBox(width: 6),
                         Text(
                           isSubscribed ? 'Abonné' : 'S\'abonner',
                           style: TextStyle(
@@ -499,7 +547,7 @@ class _MediaHeader extends StatelessWidget {
                                 ? Colors.white
                                 : (isDark ? Colors.white70 : source.color),
                             fontWeight: FontWeight.w800,
-                            fontSize: 13,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -509,15 +557,144 @@ class _MediaHeader extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
 
-          const SizedBox(height: 24),
+// ─── Barre de recherche (page détail média) ─────────────────────────────────
+class _MediaSearchBar extends StatelessWidget {
+  final bool isDark;
+  final Color sourceColor;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClose;
 
-          // Séparateur bas du header
-          Container(
-            height: 1,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.07)
-                : Colors.black.withValues(alpha: 0.06),
+  const _MediaSearchBar({
+    required this.isDark,
+    required this.sourceColor,
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isDark ? const Color(0xFF161D2A) : Colors.white;
+    final hint = isDark ? Colors.white38 : AppColors.textSecondary;
+    final textColor = isDark ? Colors.white : AppColors.textPrimary;
+
+    return Material(
+      color: bg,
+      elevation: 2,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  onChanged: onChanged,
+                  style: TextStyle(color: textColor, fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher dans les articles…',
+                    hintStyle: TextStyle(color: hint, fontSize: 15),
+                    prefixIcon: Icon(Icons.search_rounded, color: sourceColor, size: 22),
+                    filled: true,
+                    fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: onClose,
+                icon: const Icon(Icons.close_rounded),
+                color: hint,
+                tooltip: 'Fermer la recherche',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Loader détail média (logo + zones articles) ───────────────────────────────
+class _MediaDetailLoader extends StatefulWidget {
+  final bool isDark;
+
+  const _MediaDetailLoader({required this.isDark});
+
+  @override
+  State<_MediaDetailLoader> createState() => _MediaDetailLoaderState();
+}
+
+class _MediaDetailLoaderState extends State<_MediaDetailLoader>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _opacity = Tween<double>(begin: 0.5, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+      child: Column(
+        children: [
+          AnimatedBuilder(
+            animation: _opacity,
+            builder: (context, child) => Opacity(
+              opacity: _opacity.value,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset(
+                  'assets/images/logo_icon_white.png',
+                  width: 64,
+                  height: 64,
+                  fit: BoxFit.contain,
+                  color: widget.isDark ? null : AppColors.primaryGreen,
+                  colorBlendMode: widget.isDark ? null : BlendMode.srcIn,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Chargement des articles…',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: widget.isDark ? Colors.white54 : AppColors.textSecondary,
+            ),
           ),
         ],
       ),

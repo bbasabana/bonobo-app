@@ -138,7 +138,7 @@ class ArticleGridCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Icon(
@@ -199,7 +199,7 @@ class ArticleListCard extends StatelessWidget {
         extra: {'article': article.toJson()},
       ),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF161B26) : Colors.white,
@@ -278,7 +278,7 @@ class ArticleListCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Icon(Icons.flash_on_rounded, size: 12, color: sourceColor.withValues(alpha: 0.6)),
@@ -382,7 +382,7 @@ class ArticleFeaturedCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Text(
                     article.title,
                     style: const TextStyle(
@@ -395,7 +395,7 @@ class ArticleFeaturedCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       const Icon(Icons.access_time_filled_rounded, size: 12, color: Colors.white60),

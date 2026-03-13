@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "685960865310",
+    "project_id": "bonobo-eea3d",
+    "storage_bucket": "bonobo-eea3d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:685960865310:android:f3dcd9ecc92034dc88f00f",
+        "android_client_info": {
+          "package_name": "com.meyllos.bonobo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDM8n8kpLjEtM4voyb9s1DLhiL0DKzW_KE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

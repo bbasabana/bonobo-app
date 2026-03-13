@@ -82,7 +82,7 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
       return;
     }
     // TODO: POST /api/v1/auth/verify-otp
-    ref.read(authProvider.notifier).login('mock_token_jr_${DateTime.now().millisecondsSinceEpoch}', 'journalist');
+    ref.read(authProvider.notifier).loginMock('mock_token_jr_${DateTime.now().millisecondsSinceEpoch}', 'journalist');
 
     BonoboSoftToast.show(context,
         message: 'Connexion réussie ! Bienvenue, journaliste.',
@@ -96,6 +96,100 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
         message: 'Connexion $provider à venir (Backend API)',
         icon: Icons.info_outline_rounded,
         iconColor: AppColors.primaryGreenStart);
+  }
+
+  void _showLearnMore() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, controller) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F1923),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          child: ListView(
+            controller: controller,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 30),
+              const Text(
+                'Pourquoi rejoindre Bonobo ?',
+                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Une plateforme conçue pour la liberté et l\'impact.',
+                style: TextStyle(color: AppColors.primaryGreenStart, fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 32),
+              
+              _LearnMoreItem(
+                icon: Icons.auto_graph_rounded,
+                title: 'Audience & Visibilité',
+                desc: 'Vos articles sont propulsés auprès de milliers d\'utilisateurs actifs dès la publication. Ne dépendez plus des algorithmes des réseaux sociaux.',
+              ),
+              _LearnMoreItem(
+                icon: Icons.verified_user_rounded,
+                title: 'Crédibilité Certifiée',
+                desc: 'Bénéficiez du badge "Journaliste Vérifié". Votre identité est protégée et votre expertise est reconnue par notre communauté.',
+              ),
+              _LearnMoreItem(
+                icon: Icons.payments_rounded,
+                title: 'Monétisation Directe',
+                desc: 'Gagnez des revenus basés sur l\'engagement de vos lecteurs. Un système transparent qui valorise la qualité de l\'information.',
+              ),
+              _LearnMoreItem(
+                icon: Icons.analytics_rounded,
+                title: 'Outils Avancés',
+                desc: 'Accédez à un tableau de bord complet : statistiques précises, gestion des commentaires et outils de promotion de vos articles.',
+              ),
+              
+              const SizedBox(height: 40),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 40),
+
+              const Text(
+                'Pour les Médias & Éditeurs',
+                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Bonobo n\'est pas un concurrent, c\'est votre partenaire de croissance. En intégrant votre flux RSS/API, vous boostez votre trafic sortant et vos revenus publicitaires.',
+                style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.6),
+              ),
+              const SizedBox(height: 40),
+              
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Text('J\'ai compris', style: TextStyle(fontWeight: FontWeight.w900)),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -279,7 +373,7 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {}, // Savoir plus
+                  onPressed: _showLearnMore, // Savoir plus
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     side: const BorderSide(color: Colors.white30),
@@ -532,6 +626,42 @@ class _SocialBtn extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         side: const BorderSide(color: Colors.white24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
+
+class _LearnMoreItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String desc;
+
+  const _LearnMoreItem({required this.icon, required this.title, required this.desc});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: AppColors.primaryGreenStart, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Text(desc, style: const TextStyle(color: Colors.white54, fontSize: 14, height: 1.5)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

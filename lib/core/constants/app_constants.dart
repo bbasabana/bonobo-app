@@ -6,12 +6,12 @@ class AppConstants {
   static const Duration sportsCacheTtl = Duration(minutes: 30);
   static const Duration translationCacheTtl = Duration(days: 7);
 
-  // Timeouts réseau courts pour ne pas bloquer sur connexions lentes
-  static const Duration feedFetchTimeout = Duration(seconds: 8);
-  static const Duration perSourceFetchTimeout = Duration(seconds: 8);
+  // Timeouts réseau : 12s par source pour inclure les sites lents (Grands Lacs, Scoop RDC, etc.)
+  static const Duration feedFetchTimeout = Duration(seconds: 12);
+  static const Duration perSourceFetchTimeout = Duration(seconds: 12);
   static const Duration minRefreshInterval = Duration(minutes: 15);
 
-  static const int heroSliderCount = 8;
+  static const int heroSliderCount = 10;
   static const Duration heroAutoScrollInterval = Duration(seconds: 5);
 
   static const int articleExcerptLength = 150;

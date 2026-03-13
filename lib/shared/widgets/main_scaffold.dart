@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../providers/marketing_provider.dart';
+import 'marketing_promo_modal.dart';
 
 class MainScaffold extends ConsumerStatefulWidget {
   final Widget child;
@@ -70,6 +72,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
     final path = _currentPath;
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
+    final marketing = ref.watch(marketingProvider);
+
     return Stack(
       children: [
         widget.child,
@@ -79,6 +83,19 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
             behavior: HitTestBehavior.opaque,
             child: Container(color: Colors.black54),
           ),
+        
+        // --- Marketing Modal Overlay ---
+        if (marketing.showPromo && marketing.activePromo != null)
+          Stack(
+            children: [
+              GestureDetector(
+                onTap: () => ref.read(marketingProvider.notifier).dismissPromo(false),
+                child: Container(color: Colors.black45),
+              ),
+              MarketingPromoModal(type: marketing.activePromo!),
+            ],
+          ),
+
         Positioned(
           right: 20,
           bottom: 24 + bottomPad,
@@ -88,7 +105,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
             children: [
               ..._buildExpandedItems(path),
               const SizedBox(height: 12),
-              _buildMainFab(),
+              _buildMainFab(path),
             ],
           ),
         ),
@@ -140,6 +157,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
+                      decoration: TextDecoration.none,
                     ),
                   ),
                 ],
@@ -151,7 +169,9 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
     });
   }
 
-  Widget _buildMainFab() {
+  Widget _buildMainFab(String path) {
+    final isHome = path == '/';
+    
     return GestureDetector(
       onTap: _onMainTap,
       child: AnimatedContainer(
@@ -175,11 +195,19 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
             ),
           ],
         ),
-        child: AnimatedRotation(
-          turns: _expanded ? 0.125 : 0,
-          duration: const Duration(milliseconds: 280),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, anim) => RotationTransition(
+            turns: child.key == const ValueKey('close') 
+                ? Tween<double>(begin: 0.75, end: 1.0).animate(anim)
+                : Tween<double>(begin: 0.9, end: 1.0).animate(anim),
+            child: FadeTransition(opacity: anim, child: child),
+          ),
           child: Icon(
-            _expanded ? Icons.close_rounded : Icons.home_rounded,
+            _expanded 
+                ? Icons.close_rounded 
+                : (isHome ? Icons.menu_rounded : Icons.home_rounded),
+            key: ValueKey(_expanded ? 'close' : (isHome ? 'menu' : 'home')),
             color: Colors.white,
             size: 28,
           ),

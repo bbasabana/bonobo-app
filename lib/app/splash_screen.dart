@@ -4,8 +4,12 @@ import 'package:flutter/services.dart';
 
 import '../core/constants/app_colors.dart';
 
-/// Splash screen Bonobo : le logo commence grand (1.5x) et se réduit à sa taille normale.
-/// Le splash natif (flutter_native_splash) affiche seulement un fond sombre — pas de logo.
+/// Splash screen Bonobo.
+/// Flux : fond sombre apparaît instantanément → logo entre (grand → normal, elastic) →
+///        sous-titre fade in → barre de chargement animée → fondu en blanc/noir vers l'accueil.
+///
+/// Le splash natif Android utilise drawable/background.png (fond sombre uniforme).
+/// Il n'y a aucun écran blanc intermédiaire.
 class BonoboSplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
 
@@ -17,88 +21,97 @@ class BonoboSplashScreen extends StatefulWidget {
 
 class _BonoboSplashScreenState extends State<BonoboSplashScreen>
     with TickerProviderStateMixin {
-  late AnimationController _mainController;
-  late AnimationController _pulseController;
-  late AnimationController _exitController;
+  // ── Animation controllers ──────────────────────────────────────────────────
+  late AnimationController _entryController;   // logo entry
+  late AnimationController _pulseController;   // halo pulse loop
+  late AnimationController _barController;     // progress bar
+  late AnimationController _exitController;    // fade out
 
+  // ── Animations ────────────────────────────────────────────────────────────
   late Animation<double> _logoScale;
   late Animation<double> _logoOpacity;
   late Animation<double> _subtitleOpacity;
+  late Animation<double> _pulseOpacity;
   late Animation<double> _pulseScale;
-  late Animation<double> _exitScale;
+  late Animation<double> _barProgress;
   late Animation<double> _exitOpacity;
 
   @override
   void initState() {
     super.initState();
 
-    // Main controller: logo entry (large to small)
-    _mainController = AnimationController(
+    // ── Entry (logo grand → normal) ─────────────────────
+    _entryController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 900),
     );
 
-    // Subtle pulse loop
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
-
-    // Exit controller
-    _exitController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
+    _logoScale = Tween<double>(begin: 2.2, end: 1.0).animate(
+      CurvedAnimation(parent: _entryController, curve: Curves.elasticOut),
     );
-
-    // Initial scale: logo starts at 2.5x and reduces to 1.0 with elasticity
-    _logoScale = Tween<double>(begin: 2.5, end: 1.0).animate(
-      CurvedAnimation(parent: _mainController, curve: Curves.elasticOut),
-    );
-
-    // Logo appears instantly or very fast
-    _logoOpacity = Tween<double>(begin: 0.2, end: 1.0).animate(
+    _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-        parent: _mainController,
-        curve: const Interval(0.0, 0.2, curve: Curves.easeIn),
+        parent: _entryController,
+        curve: const Interval(0.0, 0.25, curve: Curves.easeIn),
       ),
     );
-
-    // Subtitle fade in
     _subtitleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-        parent: _mainController,
-        curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
+        parent: _entryController,
+        curve: const Interval(0.55, 1.0, curve: Curves.easeOut),
       ),
     );
 
-    // Pulse halo
-    _pulseScale = Tween<double>(begin: 1.0, end: 1.15).animate(
+    // ── Halo pulse ──────────────────────────────────────
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+
+    _pulseScale = Tween<double>(begin: 1.0, end: 1.18).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    _pulseOpacity = Tween<double>(begin: 0.18, end: 0.35).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Exit: zoom out and fade
-    _exitScale = Tween<double>(begin: 1.0, end: 0.8).animate(
-      CurvedAnimation(parent: _exitController, curve: Curves.easeIn),
+    // ── Barre de chargement (500ms → pleine en 1.5s) ────
+    _barController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
     );
-    _exitOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _exitController, curve: Curves.easeIn),
+    _barProgress = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _barController, curve: Curves.easeInOut),
     );
 
-    _mainController.forward().then((_) {
-      // Reduce stay delay for faster app entry
-      Future<void>.delayed(const Duration(milliseconds: 1000), () async {
-        if (!mounted) return;
-        await _exitController.forward();
-        if (!mounted) return;
-        widget.onComplete();
-      });
-    });
+    // ── Exit (fondu) ─────────────────────────────────────
+    _exitController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _exitOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _exitController, curve: Curves.easeOut),
+    );
+
+    // ── Séquence ─────────────────────────────────────────
+    _start();
+  }
+
+  Future<void> _start() async {
+    await _entryController.forward();
+    _barController.forward();
+    await Future<void>.delayed(const Duration(milliseconds: 1600));
+    if (!mounted) return;
+    await _exitController.forward();
+    if (!mounted) return;
+    widget.onComplete();
   }
 
   @override
   void dispose() {
-    _mainController.dispose();
+    _entryController.dispose();
     _pulseController.dispose();
+    _barController.dispose();
     _exitController.dispose();
     super.dispose();
   }
@@ -107,133 +120,132 @@ class _BonoboSplashScreenState extends State<BonoboSplashScreen>
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0D1B12),
-        body: Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment.center,
-              radius: 1.2,
-              colors: [
-                Color(0xFF0F2A1A),
-                Color(0xFF0A1810),
-                Color(0xFF060E0A),
-              ],
+      child: AnimatedBuilder(
+        animation: _exitController,
+        builder: (context, child) {
+          return Opacity(
+            opacity: _exitOpacity.value,
+            child: child,
+          );
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFF0D1B12),
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.center,
+                radius: 1.3,
+                colors: [
+                  Color(0xFF0F2E1A),
+                  Color(0xFF0A1810),
+                  Color(0xFF060E0A),
+                ],
+              ),
             ),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Halo vert pulsé
-              AnimatedBuilder(
-                animation: Listenable.merge([_pulseController, _exitController]),
-                builder: (context, child) {
-                  return Opacity(
-                    opacity: _exitOpacity.value * 0.6,
-                    child: Transform.scale(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+
+                // ── Halo vert animé ──────────────────────────────────────
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, _) {
+                    return Transform.scale(
                       scale: _pulseScale.value,
                       child: Container(
-                        width: 260,
-                        height: 260,
+                        width: 280,
+                        height: 280,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primaryGreen.withValues(alpha: 0.25),
-                              blurRadius: 100,
-                              spreadRadius: 40,
+                              color: AppColors.primaryGreenStart
+                                  .withValues(alpha: _pulseOpacity.value),
+                              blurRadius: 120,
+                              spreadRadius: 50,
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-
-              // Logo principal (grand → normal)
-              AnimatedBuilder(
-                animation: Listenable.merge([_mainController, _exitController]),
-                builder: (context, child) {
-                  final scale = _exitController.isAnimating
-                      ? _exitScale.value
-                      : _logoScale.value;
-                  final opacity = _exitController.isAnimating
-                      ? _exitOpacity.value
-                      : _logoOpacity.value;
-
-                  return Opacity(
-                    opacity: opacity,
-                    child: Transform.scale(
-                      scale: scale,
-                      child: Image.asset(
-                        'assets/images/logo_white.png',
-                        width: 280,
-                        height: 100,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.high,
-                        errorBuilder: (_, __, ___) => _FallbackLogo(),
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              // Sous-titre
-              Positioned(
-                bottom: 100,
-                child: AnimatedBuilder(
-                  animation: Listenable.merge([_mainController, _exitController]),
-                  builder: (context, child) {
-                    final opacity = _exitController.isAnimating
-                        ? _exitOpacity.value
-                        : _subtitleOpacity.value;
-                    return Opacity(
-                      opacity: opacity * 0.7,
-                      child: child,
                     );
                   },
-                  child: const Column(
-                    children: [
-                      Text(
-                        "L'actualité congolaise en un seul endroit",
-                        style: TextStyle(
-                          color: Colors.white60,
-                          fontSize: 13,
-                          letterSpacing: 0.4,
+                ),
+
+                // ── Logo (grand → normal, elastic) ───────────────────────
+                AnimatedBuilder(
+                  animation: _entryController,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _logoOpacity.value,
+                      child: Transform.scale(
+                        scale: _logoScale.value,
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Image.asset(
+                    'assets/images/logo_white.png',
+                    width: 260,
+                    height: 90,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    errorBuilder: (_, __, ___) => const _FallbackLogo(),
+                  ),
+                ),
+
+                // ── Sous-titre + barre de chargement ─────────────────────
+                Positioned(
+                  bottom: 72,
+                  left: 40,
+                  right: 40,
+                  child: AnimatedBuilder(
+                    animation: _entryController,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: _subtitleOpacity.value,
+                        child: child,
+                      );
+                    },
+                    child: Column(
+                      children: [
+                        const Text(
+                          "L'actualité congolaise en un seul endroit",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                            letterSpacing: 0.3,
+                            height: 1.4,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Indicateur de chargement subtil en bas
-              Positioned(
-                bottom: 60,
-                child: AnimatedBuilder(
-                  animation: _mainController,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _subtitleOpacity.value * 0.5,
-                      child: child,
-                    );
-                  },
-                  child: SizedBox(
-                    width: 40,
-                    height: 2,
-                    child: LinearProgressIndicator(
-                      backgroundColor: Colors.white12,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.primaryGreenStart.withValues(alpha: 0.8),
-                      ),
+                        const SizedBox(height: 20),
+                        // Barre de progression nette
+                        AnimatedBuilder(
+                          animation: _barController,
+                          builder: (context, _) {
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: _barProgress.value,
+                                minHeight: 2,
+                                backgroundColor: Colors.white10,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.primaryGreenStart
+                                      .withValues(alpha: 0.85),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-            ],
+
+              ],
+            ),
           ),
         ),
       ),
@@ -242,20 +254,22 @@ class _BonoboSplashScreenState extends State<BonoboSplashScreen>
 }
 
 class _FallbackLogo extends StatelessWidget {
+  const _FallbackLogo();
+
   @override
   Widget build(BuildContext context) {
     return const Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.newspaper_rounded, size: 60, color: Colors.white38),
-        SizedBox(height: 12),
+        Icon(Icons.newspaper_rounded, size: 56, color: Colors.white38),
+        SizedBox(height: 10),
         Text(
           'BONOBO',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 32,
+            fontSize: 30,
             fontWeight: FontWeight.w800,
-            letterSpacing: 4,
+            letterSpacing: 5,
           ),
         ),
       ],

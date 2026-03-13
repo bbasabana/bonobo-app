@@ -21,6 +21,7 @@ import '../../../../shared/providers/reactions_provider.dart';
 import '../../domain/feed_news.dart';
 import '../../providers/news_providers.dart';
 import '../widgets/article_reactions.dart';
+import '../../../../shared/providers/marketing_provider.dart';
 
 class ArticleDetailScreen extends ConsumerStatefulWidget {
   final String articleId;
@@ -195,27 +196,28 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => _MoreActionsSheet(
-        article: _article!,
-        onExportPdf: () { Navigator.pop(ctx); _exportPdf(); },
-        onCopyLink: () { Navigator.pop(ctx); _copyLink(); },
-        onOpenSource: () { Navigator.pop(ctx); _openSource(); },
-        onFontSmaller: () {
-          final newSize = (_fontSize - 1.0).clamp(13.0, 22.0);
-          setState(() => _fontSize = newSize);
-          LocalStorage.saveArticleFontSize(newSize);
-          Navigator.pop(ctx);
-          // Réouvrir le sheet avec la nouvelle taille
-          Future.microtask(() => _showMoreActions());
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return _MoreActionsSheet(
+            article: _article!,
+            onExportPdf: () { Navigator.pop(ctx); _exportPdf(); },
+            onCopyLink: () { Navigator.pop(ctx); _copyLink(); },
+            onOpenSource: () { Navigator.pop(ctx); _openSource(); },
+            onFontSmaller: () {
+              final newSize = (_fontSize - 1.0).clamp(13.0, 22.0);
+              setState(() => _fontSize = newSize);
+              setSheetState(() {});
+              LocalStorage.saveArticleFontSize(newSize);
+            },
+            onFontLarger: () {
+              final newSize = (_fontSize + 1.0).clamp(13.0, 22.0);
+              setState(() => _fontSize = newSize);
+              setSheetState(() {});
+              LocalStorage.saveArticleFontSize(newSize);
+            },
+            currentFontSize: _fontSize,
+          );
         },
-        onFontLarger: () {
-          final newSize = (_fontSize + 1.0).clamp(13.0, 22.0);
-          setState(() => _fontSize = newSize);
-          LocalStorage.saveArticleFontSize(newSize);
-          Navigator.pop(ctx);
-          Future.microtask(() => _showMoreActions());
-        },
-        currentFontSize: _fontSize,
       ),
     );
   }
@@ -243,7 +245,13 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen>
   Widget build(BuildContext context) {
     if (_article != null && !_hasTrackedView) {
       _hasTrackedView = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _trackView());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(analyticsServiceProvider).trackArticleView(_article!);
+          ref.read(marketingProvider.notifier).incrementArticleViews();
+          _trackView();
+        }
+      });
     }
 
     if (_article == null) {
@@ -268,13 +276,15 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen>
     final statusBarH = MediaQuery.of(context).padding.top;
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final categoryLabel = article.category?.split(',').first.trim() ?? '';
+    final savedIds = ref.watch(savedArticlesProvider);
+    final isSaved = savedIds.contains(article.id);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         backgroundColor: isDark ? const Color(0xFF0E1118) : const Color(0xFFF2F4F7),
         extendBodyBehindAppBar: true,
-        appBar: _buildAppBar(context, article, isSubscribed, isDark, statusBarH),
+        appBar: _buildAppBar(context, article, isSubscribed, isDark, statusBarH, isSaved: isSaved, onSave: _saveArticle),
         body: Stack(
           children: [
             // ── Contenu scrollable
@@ -429,7 +439,8 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen>
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext ctx, FeedNews article,
-      bool isSubscribed, bool isDark, double statusBarH) {
+      bool isSubscribed, bool isDark, double statusBarH,
+      {required bool isSaved, required VoidCallback onSave}) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(kToolbarHeight),
       child: AnimatedContainer(
@@ -457,9 +468,12 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen>
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.share_rounded, size: 22),
-              onPressed: _share,
-              tooltip: 'Partager',
+              icon: Icon(
+                isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                size: 24,
+              ),
+              onPressed: onSave,
+              tooltip: isSaved ? 'Retirer des sauvegardes' : 'Sauvegarder l\'article',
             ),
             IconButton(
               icon: const Icon(Icons.more_vert_rounded, size: 22),
@@ -576,12 +590,12 @@ class _FloatingEngagementBar extends ConsumerWidget {
 
           const SizedBox(width: 8),
 
-          // ── Partager — cercle icône (cohérent avec l'icône en haut)
+          // ── Partager — cercle icône (footer)
           GestureDetector(
             onTap: onShare,
             child: Container(
-              width: 46,
-              height: 46,
+              width: 50,
+              height: 50,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF4ADE80), Color(0xFF01732C)],
@@ -592,7 +606,7 @@ class _FloatingEngagementBar extends ConsumerWidget {
               ),
               child: const Icon(
                 Icons.share_rounded,
-                size: 20,
+                size: 26,
                 color: Colors.white,
               ),
             ),

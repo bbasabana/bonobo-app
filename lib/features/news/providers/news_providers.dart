@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/news_service.dart';
 import '../domain/feed_news.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../shared/local_storage.dart';
 
 final newsServiceProvider = Provider<NewsService>((ref) => NewsService());
@@ -43,6 +44,7 @@ void _backgroundRefresh(Ref ref, NewsService service) {
     if (ref.read(newsRefreshingProvider)) return; // Déjà en cours
     ref.read(newsRefreshingProvider.notifier).state = true;
     try {
+      final previousCount = LocalStorage.getArticles().length;
       final fresh = await service.fetchAllFeeds().timeout(
         _fetchTimeout,
         onTimeout: () => <FeedNews>[],
@@ -51,12 +53,27 @@ void _backgroundRefresh(Ref ref, NewsService service) {
         await LocalStorage.saveArticles(fresh);
         // Invalide le provider → re-build instantané depuis le cache frais
         ref.invalidate(newsListProvider);
+        // Notification sonore si de nouveaux articles sont arrivés
+        final newCount = fresh.length - previousCount;
+        if (newCount > 0) {
+          _triggerNewArticlesNotification(newCount);
+        }
       }
     } catch (_) {
       // Silencieux : l'utilisateur voit le cache existant
     } finally {
       ref.read(newsRefreshingProvider.notifier).state = false;
     }
+  });
+}
+
+void _triggerNewArticlesNotification(int count) {
+  Future.microtask(() async {
+    try {
+      final notif = NotificationService();
+      await notif.playNewArticlesSound();
+      await notif.showNewArticlesNotification(count: count);
+    } catch (_) {}
   });
 }
 
@@ -93,8 +110,10 @@ final newsForSourceProvider =
 
 /// Provider dédié à la page détail d'un média.
 /// CACHE EN PREMIER → réponse immédiate, pas de page blanche.
-/// Si aucun cache (première visite) → fetch réseau (45 articles max).
-const _mediaDetailLimit = 45;
+/// Si aucun cache (première visite) → fetch réseau (50 articles max).
+/// Limite haute : 150 articles par média.
+/// Le service récupère autant que disponible jusqu'à ce plafond.
+const _mediaDetailLimit = 150;
 
 final mediaDetailArticlesProvider =
     FutureProvider.family<List<FeedNews>, String>((ref, sourceId) async {
@@ -104,12 +123,13 @@ final mediaDetailArticlesProvider =
   if (cached.isNotEmpty) return cached;
 
   // 2. Aucun cache (première visite de ce média) → fetch réseau
+  // Timeout plus long (25s) pour les sources lentes (ex. Grands Lacs, Scoop RDC).
   final service = ref.watch(newsServiceProvider);
   try {
     return await service
         .fetchFeedForSourceWithLimit(sourceId, _mediaDetailLimit)
         .timeout(
-          const Duration(seconds: 15),
+          const Duration(seconds: 25),
           onTimeout: () => <FeedNews>[],
         );
   } catch (_) {
@@ -120,14 +140,17 @@ final mediaDetailArticlesProvider =
 final newsForCategoryProvider =
     FutureProvider.family<List<FeedNews>, String>((ref, category) async {
   final allNews = await ref.watch(newsListProvider.future);
-  return allNews
-      .where((a) => a.category?.toLowerCase() == category.toLowerCase())
-      .toList();
+  final catLower = category.toLowerCase().trim();
+  return allNews.where((a) {
+    final c = a.category?.toLowerCase() ?? '';
+    if (c.isEmpty) return false;
+    return c.split(',').any((s) => s.trim().toLowerCase() == catLower);
+  }).toList();
 });
 
 final heroArticlesProvider = FutureProvider<List<FeedNews>>((ref) async {
   final allNews = await ref.watch(newsListProvider.future);
-  return allNews.take(8).toList();
+  return allNews.take(10).toList();
 });
 
 /// Refresh explicite (pull-to-refresh) : marque le cache expiré

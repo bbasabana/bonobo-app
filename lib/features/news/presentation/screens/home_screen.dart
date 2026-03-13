@@ -20,7 +20,7 @@ import '../../providers/news_providers.dart';
 import '../widgets/article_card.dart';
 import '../widgets/hero_slider_widget.dart';
 
-const double _kHeroHeight = 300.0;
+const double _kHeroHeight = 360.0;
 
 // ─────────────────────────────────────────────
 //  Catégories (icônes Material, pas d’emojis)
@@ -248,62 +248,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         backgroundColor: Theme.of(context).brightness == Brightness.dark
             ? const Color(0xFF0E1118)
             : const Color(0xFFF2F4F7),
-        extendBodyBehindAppBar: true,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            color: _appBarSolid
-                ? AppColors.backgroundDark.withValues(alpha: 0.98)
-                : Colors.transparent,
-            child: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              centerTitle: false,
-              titleSpacing: 16,
-              title: Row(
+        body: Stack(
+          children: [
+            // ── Contenu défilant ───────────────────────────────────────────
+            Positioned.fill(
+              child: _buildBody(context, articles, heroArticles, hasData, isFirstLoad, isRefreshing, isOnline, statusBarH),
+            ),
+
+            // ── Header Transparent Overlay (Background/Gradient only) ─────
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: Container(
+                  height: statusBarH + 120,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.6),
+                        Colors.black.withValues(alpha: 0.2),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // ── Header Actions (Clickable) ─────────────────────────────────
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _EditorialHeader(
+                statusBarH: statusBarH,
+                isDark: Theme.of(context).brightness == Brightness.dark,
+                onSearch: () => context.push('/search'),
+                onAccount: () => context.push('/compte'),
+                onTheme: () => ref.read(themeProvider.notifier).toggle(),
+                themeMode: ref.watch(themeProvider),
+              ),
+            ),
+
+            // ── Banner Offline & Loading ───────────────────────────────────
+            Positioned(
+              top: statusBarH + 60, // Juste sous le logo/actions
+              left: 20,
+              right: 20,
+              child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white10,
-                      borderRadius: BorderRadius.circular(10),
+                  const OfflineBanner(),
+                  if (isRefreshing && hasData)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        minHeight: 2,
+                        color: AppColors.primaryGreen,
+                        backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      ),
                     ),
-                    child: Image.asset(
-                      'assets/images/logo_icon_white.png',
-                      width: 20,
-                      height: 20,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.newspaper_rounded, color: Colors.white70, size: 16),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'BONOBO',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
                 ],
               ),
-              actions: [
-                _AppBarBtn(icon: Icons.search_rounded, onTap: () => context.push('/search')),
-                const SizedBox(width: 8),
-                _ThemeToggleBtn(),
-                const SizedBox(width: 8),
-                _AppBarBtn(
-                  icon: Icons.person_outline_rounded,
-                  onTap: () => context.push('/compte'),
-                ),
-                const SizedBox(width: 12),
-              ],
             ),
-          ),
+          ],
         ),
-        body: _buildBody(context, articles, heroArticles, hasData, isFirstLoad, isRefreshing, isOnline, statusBarH),
       ),
     );
   }
@@ -312,156 +323,155 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       bool hasData, bool isFirstLoad, bool isRefreshing, bool isOnline, double statusBarH) {
     final filtered = _filterArticles(articles);
 
-    return Column(
-      children: [
-        const OfflineBanner(),
-        if (isRefreshing && hasData)
-          const LinearProgressIndicator(
-            minHeight: 2,
-            color: AppColors.primaryGreenStart,
-            backgroundColor: Colors.transparent,
+    if (isFirstLoad) {
+      return _LoadingBody(statusBarH: 0); // statusBarH déjà pris par le header fixe
+    }
+
+    if (!hasData) {
+      return _EmptyFirstLoad(
+        isOnline: isOnline,
+        lastError: ref.watch(newsLastErrorProvider),
+        onRetry: () async {
+          ref.read(refreshNewsProvider)();
+          if (mounted) {
+            final service = ref.read(connectivityServiceProvider);
+            final quality = await service.checkQuality();
+            final connType = ref.read(connectionTypeProvider).valueOrNull ?? 'Réseau';
+            if (mounted) {
+              BonoboSoftToast.showConnectionQuality(context, quality, connType);
+            }
+          }
+        },
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.primaryGreen,
+      backgroundColor: AppColors.backgroundDark,
+      onRefresh: () async {
+        _hasShownSavedToast = false;
+        await ref.read(refreshNewsProvider)();
+        if (mounted) {
+          final service = ref.read(connectivityServiceProvider);
+          final quality = await service.checkQuality();
+          final connType = ref.read(connectionTypeProvider).valueOrNull ?? 'Réseau';
+          if (mounted) {
+            BonoboSoftToast.showConnectionQuality(context, quality, connType);
+          }
+        }
+      },
+      child: CustomScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        slivers: [
+          // ── Hero slider ──────────────────────────────────
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: _kHeroHeight,
+              child: heroArticles.isNotEmpty
+                  ? HeroSliderWidget(articles: heroArticles)
+                  : _HeroShimmer(height: _kHeroHeight),
+            ),
           ),
-        Expanded(
-          child: isFirstLoad
-              ? _LoadingBody(statusBarH: statusBarH)
-              : !hasData
-                  ? _EmptyFirstLoad(
-                      isOnline: isOnline,
-                      lastError: ref.watch(newsLastErrorProvider),
-                      onRetry: () async {
-                        // Refresh immédiat, qualité en arrière-plan
-                        ref.read(refreshNewsProvider)();
-                        if (mounted) {
-                          final service = ref.read(connectivityServiceProvider);
-                          final quality = await service.checkQuality();
-                          final connType = ref.read(connectionTypeProvider).valueOrNull ?? 'Réseau';
-                          if (mounted) {
-                            BonoboSoftToast.showConnectionQuality(context, quality, connType);
-                          }
-                        }
-                      },
-                    )
-                  : RefreshIndicator(
-                      color: AppColors.primaryGreen,
-                      backgroundColor: AppColors.backgroundDark,
-                      onRefresh: () async {
-                        _hasShownSavedToast = false;
-                        // Lancer le refresh immédiatement (pas de blocage DNS)
-                        await ref.read(refreshNewsProvider)();
-                        // Vérifier la qualité en arrière-plan après
-                        if (mounted) {
-                          final service = ref.read(connectivityServiceProvider);
-                          final quality = await service.checkQuality();
-                          final connType = ref.read(connectionTypeProvider).valueOrNull ?? 'Réseau';
-                          if (mounted) {
-                            BonoboSoftToast.showConnectionQuality(context, quality, connType);
-                          }
-                        }
-                      },
-                      child: CustomScrollView(
-                        controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                        slivers: [
-                          SliverToBoxAdapter(
-                            child: SizedBox(
-                              height: _kHeroHeight + statusBarH + kToolbarHeight,
-                              child: heroArticles.isNotEmpty
-                                  ? HeroSliderWidget(articles: heroArticles)
-                                  : _HeroShimmer(height: _kHeroHeight + statusBarH + kToolbarHeight),
-                            ),
-                          ),
-                          if (filtered.length > 6)
-                            SliverToBoxAdapter(
-                              child: _HorizontalArticleStrip(articles: filtered.take(6).toList()),
-                            ),
-                          SliverToBoxAdapter(child: _MediaSourceSection()),
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Explorer par thème', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: -0.4, color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white : AppColors.textPrimary)),
-                                  const SizedBox(height: 4),
-                                  Text('Filtrez l’actualité par catégorie', style: TextStyle(fontSize: 12, color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white54 : AppColors.textSecondary)),
-                                ],
-                              ),
-                            ),
-                          ),
-                          SliverToBoxAdapter(
-                            child: _CategoryPills(
-                              selected: _selectedCategory,
-                              articles: articles,
-                              onSelect: (cat) => setState(() => _selectedCategory = cat),
-                            ),
-                          ),
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('Aujourd\'hui', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5, color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white : AppColors.textPrimary)),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          _selectedCategory ?? 'Toute l\'actualité · Aujourd\'hui et hier',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w600, fontSize: 13),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (!isOnline) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      margin: const EdgeInsets.only(bottom: 4),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                                      child: const Text('OFFLINE', style: TextStyle(color: Colors.orangeAccent, fontSize: 9, fontWeight: FontWeight.w900)),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (filtered.isEmpty)
-                            SliverFillRemaining(
-                              hasScrollBody: false,
-                              child: _EmptyFeed(
-                                category: _selectedCategory,
-                                onClear: () => setState(() => _selectedCategory = null),
-                              ),
-                            )
-                          else
-                            ..._buildMixedLayout(filtered.length > 6 ? filtered.sublist(6) : filtered, ctx),
-                          if (!isOnline)
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.cloud_off_rounded, color: Colors.orangeAccent, size: 20),
-                                      const SizedBox(width: 12),
-                                      Expanded(child: Text('Vous consultez des articles en cache. Connectez-vous pour plus d\'actualités.', style: TextStyle(fontSize: 12, color: Colors.orangeAccent.withValues(alpha: 0.9), height: 1.4))),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-                        ],
-                      ),
+          // ── Plus de Flash Ticker ici ─────────────────────
+          // ── Bande "En ce moment" (Filtrée pour unicité) ────────────────
+          if (filtered.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 20),
+                child: _HorizontalArticleStrip(
+                  articles: filtered
+                      .where((a) => !heroArticles.any((h) => h.id == a.id))
+                      .take(6)
+                      .toList(),
+                ),
+              ),
+            ),
+          SliverToBoxAdapter(child: _MediaSourceSection()),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Explorer par thème', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: -0.4, color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white : AppColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text('Filtrez l’actualité par catégorie', style: TextStyle(fontSize: 12, color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white54 : AppColors.textSecondary)),
+                ],
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: _CategoryPills(
+              selected: _selectedCategory,
+              articles: articles,
+              onSelect: (cat) => setState(() => _selectedCategory = cat),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Aujourd\'hui', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5, color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white : AppColors.textPrimary)),
+                        const SizedBox(height: 4),
+                        Text(
+                          _selectedCategory ?? 'Toute l\'actualité · Aujourd\'hui et hier',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ],
                     ),
-        ),
-      ],
+                  ),
+                  if (!isOnline) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                      child: const Text('OFFLINE', style: TextStyle(color: Colors.orangeAccent, fontSize: 9, fontWeight: FontWeight.w900)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if (filtered.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _EmptyFeed(
+                category: _selectedCategory,
+                onClear: () => setState(() => _selectedCategory = null),
+              ),
+            )
+          else
+            ..._buildMixedLayout(filtered.length > 6 ? filtered.sublist(6) : filtered, ctx),
+          if (!isOnline)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.cloud_off_rounded, color: Colors.orangeAccent, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text('Vous consultez des articles en cache. Connectez-vous pour plus d\'actualités.', style: TextStyle(fontSize: 12, color: Colors.orangeAccent.withValues(alpha: 0.9), height: 1.4))),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+        ],
+      ),
     );
   }
 }
@@ -609,11 +619,14 @@ class _HorizontalArticleStrip extends StatelessWidget {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: BonoboArticleImage(
-                            imageUrl: article.imageUrl,
-                            width: 160,
-                            height: 110,
-                            fit: BoxFit.cover,
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: BonoboArticleImage(
+                              imageUrl: article.imageUrl,
+                              width: 160,
+                              height: 90,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -1445,3 +1458,112 @@ class _JournalistBanner extends StatelessWidget {
 Future<void> clearLocalStorage(WidgetRef ref) async {
   await ref.read(refreshNewsProvider)();
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  _EditorialHeader — Header éditorial premium Bonobo
+// ═════════════════════════════════════════════════════════════════════════════
+class _EditorialHeader extends ConsumerWidget {
+  final double statusBarH;
+  final bool isDark;
+  final VoidCallback onSearch;
+  final VoidCallback onAccount;
+  final VoidCallback onTheme;
+  final ThemeMode themeMode;
+
+  const _EditorialHeader({
+    required this.statusBarH,
+    required this.isDark,
+    required this.onSearch,
+    required this.onAccount,
+    required this.onTheme,
+    required this.themeMode,
+  });
+
+  static final _dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  static final _monthNames = [
+    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+  ];
+
+  String get _todayLabel {
+    final now = DateTime.now();
+    return '${_dayNames[now.weekday % 7]} ${now.day} ${_monthNames[now.month - 1]} ${now.year}';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeIcon = switch (themeMode) {
+      ThemeMode.system => Icons.brightness_auto_rounded,
+      ThemeMode.light  => Icons.light_mode_rounded,
+      ThemeMode.dark   => Icons.dark_mode_rounded,
+    };
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Row : logo + actions ────────────────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+              // Logo Bonobo (Icône blanche agrandie)
+              Hero(
+                tag: 'app_logo',
+                child: Image.asset(
+                  'assets/images/logo_icon_white.png',
+                  height: 48,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Text(
+                    'BONOBO',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              // Actions
+              _HeaderBtn(icon: Icons.search_rounded, onTap: onSearch),
+              const SizedBox(width: 6),
+              _HeaderBtn(icon: themeIcon, onTap: () => ref.read(themeProvider.notifier).toggle()),
+              const SizedBox(width: 6),
+              _HeaderBtn(icon: Icons.person_outline_rounded, onTap: onAccount),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+}
+
+class _HeaderBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HeaderBtn({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        ),
+        child: Icon(icon, color: Colors.white, size: 17),
+      ),
+    );
+  }
+}
+

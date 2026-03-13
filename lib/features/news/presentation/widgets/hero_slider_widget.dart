@@ -183,7 +183,7 @@ class _HeroSlide extends StatelessWidget {
 
           // Content
           Positioned(
-            bottom: 56,
+            bottom: 48,
             left: 20,
             right: 20,
             child: Column(
@@ -224,7 +224,7 @@ class _HeroSlide extends StatelessWidget {
                     ],
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 // Title
                 Text(
                   article.title,
@@ -238,7 +238,7 @@ class _HeroSlide extends StatelessWidget {
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 // Time
                 Row(
                   children: [

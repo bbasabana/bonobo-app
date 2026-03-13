@@ -15,6 +15,10 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  # Firebase
+  firebase_core: ^4.5.0
+  firebase_messaging: ^16.1.2
+
   # State Management
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
@@ -54,9 +58,12 @@ dependencies:
   intl: ^0.19.0
   html: ^0.15.5
   url_launcher: ^6.3.1
+  path_provider: ^2.1.5
   flutter_dotenv: ^5.2.1
   equatable: ^2.0.5
   google_fonts: ^6.2.1
+  audioplayers: ^6.6.0
+  flutter_local_notifications: ^21.0.0
 
 
 dev_dependencies:
@@ -73,7 +80,7 @@ flutter:
     - assets/images/
     - assets/logos/
     - assets/sounds/
-    - .env
+
 
 # Splash natif (remplace le splash par défaut Flutter)
 flutter_native_splash:

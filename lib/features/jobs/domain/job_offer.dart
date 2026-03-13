@@ -8,6 +8,13 @@ class JobOffer extends Equatable {
   final String? deadline;
   final String sourceUrl;
   final DateTime fetchedAt;
+  final String? location;
+  final String? reference;
+  final String? salary;
+  final String? salaryCurrency;
+  final String? contractType;
+  /// Source : 'mediacongo' | 'careerjet' | 'option_carriere'
+  final String source;
 
   const JobOffer({
     required this.id,
@@ -17,6 +24,12 @@ class JobOffer extends Equatable {
     this.deadline,
     required this.sourceUrl,
     required this.fetchedAt,
+    this.location,
+    this.reference,
+    this.salary,
+    this.salaryCurrency,
+    this.contractType,
+    this.source = 'mediacongo',
   });
 
   @override
@@ -30,6 +43,12 @@ class JobOffer extends Equatable {
         'deadline': deadline,
         'sourceUrl': sourceUrl,
         'fetchedAt': fetchedAt.toIso8601String(),
+        'location': location,
+        'reference': reference,
+        'salary': salary,
+        'salaryCurrency': salaryCurrency,
+        'contractType': contractType,
+        'source': source,
       };
 
   factory JobOffer.fromJson(Map<String, dynamic> json) => JobOffer(
@@ -42,5 +61,11 @@ class JobOffer extends Equatable {
         fetchedAt: json['fetchedAt'] != null
             ? DateTime.tryParse(json['fetchedAt'] as String) ?? DateTime.now()
             : DateTime.now(),
+        location: json['location'] as String?,
+        reference: json['reference'] as String?,
+        salary: json['salary'] as String?,
+        salaryCurrency: json['salaryCurrency'] as String?,
+        contractType: json['contractType'] as String?,
+        source: json['source'] as String? ?? 'mediacongo',
       );
 }
