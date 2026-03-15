@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/media_sources.dart';
+import '../../providers/news_providers.dart';
 import '../../providers/news_providers.dart';
 import '../widgets/article_card.dart';
 
@@ -113,7 +113,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 }
 
-class _FiltersBar extends StatelessWidget {
+class _FiltersBar extends ConsumerWidget {
   final String? sourceId;
   final String? category;
   final String? dateRange;
@@ -142,7 +142,8 @@ class _FiltersBar extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sourcesMap = ref.watch(mediaSourcesMapProvider);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       color: AppColors.backgroundDark.withValues(alpha: 0.6),
@@ -152,9 +153,9 @@ class _FiltersBar extends StatelessWidget {
           children: [
             _FilterChip(
               label: 'Source',
-              value: sourceId == null ? null : MediaSources.findById(sourceId!)?.name,
+              value: sourceId == null ? null : sourcesMap[sourceId]?.name,
               onClear: () => onSourceChanged(null),
-              onTap: () => _showSourcePicker(context),
+              onTap: () => _showSourcePicker(context, ref),
             ),
             const SizedBox(width: 8),
             _FilterChip(
@@ -176,8 +177,8 @@ class _FiltersBar extends StatelessWidget {
     );
   }
 
-  void _showSourcePicker(BuildContext context) {
-    final list = MediaSources.all;
+  void _showSourcePicker(BuildContext context, WidgetRef ref) {
+    final list = ref.watch(dynamicMediaSourcesProvider).valueOrNull ?? [];
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.backgroundDark,

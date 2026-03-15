@@ -13,7 +13,7 @@ class AppConfig {
   /// Injectée via --dart-define=API_BASE_URL=...
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:3000', // localhost Android émulateur
+    defaultValue: 'https://bonobo-manage.vercel.app', 
   );
 
   /// Timeout réseau pour les appels auth (secondes).

@@ -42,12 +42,11 @@ class AuthResponse {
 /// Les endpoints sont documentés dans docs/backend-api-auth.md.
 class AuthService {
   late final Dio _dio;
-  static const String _baseUrl = AppConfig.apiBaseUrl;
 
   AuthService() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: _baseUrl,
+        baseUrl: AppConfig.apiBaseUrl,
         connectTimeout: const Duration(seconds: AppConfig.authTimeoutSeconds),
         receiveTimeout: const Duration(seconds: AppConfig.authTimeoutSeconds),
         headers: {

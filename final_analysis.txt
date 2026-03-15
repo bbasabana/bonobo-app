@@ -1,0 +1,135 @@
+Resolving dependencies...
+Downloading packages...
+  connectivity_plus 6.1.5 (7.0.0 available)
+  flutter_dotenv 5.2.1 (6.0.0 available)
+  flutter_lints 4.0.0 (6.0.0 available)
+  flutter_riverpod 2.6.1 (3.3.1 available)
+  go_router 14.8.1 (17.1.0 available)
+  google_fonts 6.3.3 (8.0.2 available)
+  image 4.5.4 (4.8.0 available)
+! intl 0.20.2 (overridden)
+  lints 4.0.0 (6.1.0 available)
+  meta 1.17.0 (1.18.1 available)
+  riverpod 2.6.1 (3.2.1 available)
+  riverpod_annotation 2.6.1 (4.0.2 available)
+  share_plus 10.1.4 (12.0.1 available)
+  share_plus_platform_interface 5.0.2 (6.1.0 available)
+  win32 5.15.0 (6.0.0 available)
+Got dependencies!
+14 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing Bonobo...                                             
+
+warning • The value of the local variable 'authNotifier' isn't used • lib/app/router.dart:43:9 • unused_local_variable
+warning • Unused import: 'package:flutter/material.dart' • lib/core/constants/media_sources.dart:1:8 • unused_import
+warning • Unused import: '../../../features/news/domain/media_source.dart' • lib/core/constants/media_sources.dart:2:8 • unused_import
+   info • Unnecessary 'const' keyword • lib/core/services/notification_service.dart:34:14 • unnecessary_const
+   info • The import of 'dart:typed_data' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/services.dart' • lib/core/services/pdf_export_service.dart:2:8 • unnecessary_import
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:68:23 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:69:21 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:70:23 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:70:44 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:87:30 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:99:28 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:103:28 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:113:23 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:114:21 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:115:20 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:127:24 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:138:27 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:139:24 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:140:31 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:140:51 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:146:26 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:187:26 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:203:25 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:204:22 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:205:29 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:205:49 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:217:92 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:222:26 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/core/services/pdf_export_service.dart:227:26 • prefer_const_constructors
+warning • The value of the local variable 'avatarBg' isn't used • lib/features/account/presentation/compte_screen.dart:198:11 • unused_local_variable
+   info • Use 'const' for final variables initialized to a constant value • lib/features/jobs/data/careerjet_jobs_service.dart:21:5 • prefer_const_declarations
+warning • The value of the local variable 'publishedAt' isn't used • lib/features/jobs/data/careerjet_jobs_service.dart:68:19 • unused_local_variable
+warning • Unused import: '../../../core/constants/app_constants.dart' • lib/features/jobs/data/mediacongo_jobs_service.dart:5:8 • unused_import
+   info • Use 'const' with the constructor to improve performance • lib/features/jobs/presentation/jobs_screen.dart:336:33 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/jobs/presentation/jobs_screen.dart:424:34 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/jobs/presentation/jobs_screen.dart:486:21 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/jobs/presentation/jobs_screen.dart:499:19 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/jobs/presentation/jobs_screen.dart:501:28 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/journalist/presentation/journalist_screen.dart:138:15 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/journalist/presentation/journalist_screen.dart:143:15 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/journalist/presentation/journalist_screen.dart:148:15 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/journalist/presentation/journalist_screen.dart:153:15 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/journalist/presentation/journalist_screen.dart:346:11 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/journalist/presentation/journalist_screen.dart:348:11 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/journalist/presentation/journalist_screen.dart:350:11 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/journalist/presentation/journalist_screen.dart:577:12 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/media/presentation/devenir_media_source_modal.dart:531:23 • prefer_const_constructors
+warning • Unused import: '../../../core/constants/media_sources.dart' • lib/features/media/presentation/media_picker_screen.dart:8:8 • unused_import
+warning • Unused import: '../../../shared/local_storage.dart' • lib/features/media/presentation/media_picker_screen.dart:10:8 • unused_import
+   info • Statements in a for should be enclosed in a block • lib/features/media/presentation/media_picker_screen.dart:62:34 • curly_braces_in_flow_control_structures
+warning • The value of the local variable 'followed' isn't used • lib/features/media/presentation/media_picker_screen.dart:184:11 • unused_local_variable
+warning • The value of the local variable 'others' isn't used • lib/features/media/presentation/media_picker_screen.dart:185:11 • unused_local_variable
+   info • Don't invoke 'print' in production code • lib/features/news/data/backend_news_service.dart:25:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/news/data/backend_news_service.dart:37:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/news/data/backend_news_service.dart:49:7 • avoid_print
+   info • The member 'fetchFeedForSourceWithLimit' overrides an inherited member but isn't annotated with '@override' • lib/features/news/data/backend_news_service.dart:54:26 • annotate_overrides
+   info • Don't invoke 'print' in production code • lib/features/news/data/comment_service.dart:24:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/news/data/comment_service.dart:37:7 • avoid_print
+warning • The operand can't be 'null', so the condition is always 'false' • lib/features/news/data/news_service.dart:65:16 • unnecessary_null_comparison
+warning • The operand can't be 'null', so the condition is always 'false' • lib/features/news/data/news_service.dart:74:16 • unnecessary_null_comparison
+warning • The declaration '_ActionBar' isn't referenced • lib/features/news/presentation/screens/article_detail_screen.dart:849:7 • unused_element
+warning • Duplicate import • lib/features/news/presentation/screens/home_screen.dart:8:8 • duplicate_import
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/home_screen.dart:90:30 • prefer_const_constructors
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/news/presentation/screens/home_screen.dart:291:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/news/presentation/screens/home_screen.dart:292:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/news/presentation/screens/home_screen.dart:297:49 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/home_screen.dart:347:14 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/home_screen.dart:393:21 • prefer_const_constructors
+warning • The declaration '_AppBarBtn' isn't referenced • lib/features/news/presentation/screens/home_screen.dart:691:7 • unused_element
+warning • The declaration '_ThemeToggleBtn' isn't referenced • lib/features/news/presentation/screens/home_screen.dart:716:7 • unused_element
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/home_screen.dart:1325:22 • prefer_const_constructors
+warning • The declaration '_todayLabel' isn't referenced • lib/features/news/presentation/screens/home_screen.dart:1513:14 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/news/presentation/screens/home_screen.dart:1590:49 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/news/presentation/screens/home_screen.dart:1590:82 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/news/presentation/screens/home_screen.dart:1593:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/news/presentation/screens/home_screen.dart:1593:86 • deprecated_member_use
+warning • Duplicate import • lib/features/news/presentation/screens/search_screen.dart:9:8 • duplicate_import
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/search_screen.dart:189:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/search_screen.dart:191:22 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/search_screen.dart:191:54 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/search_screen.dart:215:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/search_screen.dart:217:22 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/search_screen.dart:217:47 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/search_screen.dart:241:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/search_screen.dart:243:22 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/screens/search_screen.dart:243:45 • prefer_const_constructors
+  error • 'ArticleCard.build' ('Widget Function(BuildContext)') isn't a valid override of 'ConsumerWidget.build' ('Widget Function(BuildContext, WidgetRef)') • lib/features/news/presentation/widgets/article_card.dart:30:10 • invalid_override
+warning • Unused import: '../../../../shared/models/local_reaction.dart' • lib/features/news/presentation/widgets/article_reactions.dart:8:8 • unused_import
+warning • The value of the local variable 'actionState' isn't used • lib/features/news/presentation/widgets/article_reactions.dart:145:11 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/news/presentation/widgets/article_reactions.dart:176:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/news/presentation/widgets/article_reactions.dart:283:68 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/news/presentation/widgets/article_reactions.dart:519:33 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/widgets/hero_slider_widget.dart:69:9 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/news/presentation/widgets/hero_slider_widget.dart:70:18 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/features/news/presentation/widgets/hero_slider_widget.dart:181:26 • prefer_const_literals_to_create_immutables
+warning • Unused import: '../../../core/constants/media_sources.dart' • lib/features/news/providers/news_providers.dart:9:8 • unused_import
+warning • Unused import: 'package:flutter/material.dart' • lib/features/sports/data/match_alert_service.dart:1:8 • unused_import
+  error • Undefined class 'Dio' • lib/features/sports/data/sports_service.dart:9:9 • undefined_class
+  error • Undefined class 'Dio' • lib/features/sports/data/sports_service.dart:11:21 • undefined_class
+  error • The method 'Dio' isn't defined for the type 'ApiSportsService' • lib/features/sports/data/sports_service.dart:13:13 • undefined_method
+  error • The method 'BaseOptions' isn't defined for the type 'ApiSportsService' • lib/features/sports/data/sports_service.dart:13:17 • undefined_method
+   info • Use 'const' with the constructor to improve performance • lib/features/sports/presentation/sports_screen.dart:323:25 • prefer_const_constructors
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/shared/local_storage.dart:61:28 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/shared/widgets/actualisation_overlay.dart:97:19 • prefer_const_constructors
+   info • Unnecessary 'const' keyword • lib/shared/widgets/bonobo_app_bar.dart:42:30 • unnecessary_const
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/shared/widgets/marketing_promo_modal.dart:68:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/shared/widgets/marketing_promo_modal.dart:106:93 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/shared/widgets/marketing_promo_modal.dart:158:65 • deprecated_member_use
+warning • The value of the local variable 'domain' isn't used • lib/shared/widgets/media_favicon.dart:96:11 • unused_local_variable
+   info • Use 'const' with the constructor to improve performance • lib/shared/widgets/offline_banner.dart:80:19 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/shared/widgets/offline_banner.dart:81:19 • prefer_const_literals_to_create_immutables
+
+111 issues found. (ran in 5.9s)

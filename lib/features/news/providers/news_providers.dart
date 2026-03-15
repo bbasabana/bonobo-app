@@ -1,12 +1,14 @@
 import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/backend_news_service.dart';
 import '../data/news_service.dart';
 import '../domain/feed_news.dart';
+import '../domain/media_source.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../shared/local_storage.dart';
+import '../../../core/constants/media_sources.dart';
 
-final newsServiceProvider = Provider<NewsService>((ref) => NewsService());
+final newsServiceProvider = Provider<NewsService>((ref) => BackendNewsService());
 
 const _fetchTimeout = Duration(seconds: 20);
 
@@ -15,6 +17,29 @@ final newsRefreshingProvider = StateProvider<bool>((ref) => false);
 
 /// Dernière erreur de chargement (null = pas d'erreur).
 final newsLastErrorProvider = StateProvider<String?>((ref) => null);
+
+/// Provider dynamic des sources (depuis le backend).
+final dynamicMediaSourcesProvider = FutureProvider<List<MediaSource>>((ref) async {
+  final service = ref.watch(newsServiceProvider);
+  final cached = LocalStorage.getMediaSources(); // Should implement this if possible, or just fetch for now
+  
+  if (cached.isNotEmpty) {
+    _refreshSources(ref, service);
+    return cached;
+  }
+  
+  return await service.fetchMediaSources();
+});
+
+void _refreshSources(Ref ref, NewsService service) async {
+    try {
+      final fresh = await service.fetchMediaSources();
+      if (fresh.isNotEmpty) {
+        await LocalStorage.saveMediaSources(fresh);
+        ref.invalidate(dynamicMediaSourcesProvider);
+      }
+    } catch (_) {}
+}
 
 /// Provider principal — CACHE EN PREMIER.
 ///
@@ -214,4 +239,10 @@ final searchResultsProvider = Provider<List<FeedNews>>((ref) {
     final excerpt = a.excerpt.toLowerCase();
     return words.every((w) => title.contains(w) || excerpt.contains(w));
   }).toList();
+});
+
+final mediaSourcesMapProvider = Provider<Map<String, MediaSource>>((ref) {
+  final asyncSources = ref.watch(dynamicMediaSourcesProvider);
+  final sources = asyncSources.valueOrNull ?? [];
+  return {for (var s in sources) s.id: s};
 });

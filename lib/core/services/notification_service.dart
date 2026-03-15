@@ -79,6 +79,16 @@ class NotificationService {
         playSound: true,
         sound: RawResourceAndroidNotificationSound('summary_notification'),
       ));
+      await plugin?.createNotificationChannel(const AndroidNotificationChannel(
+        'bonobo_sports_v2',
+        'Matchs en direct',
+        description: 'Alertes pour vos matchs de football',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+        sound: RawResourceAndroidNotificationSound('new_articles'),
+      ));
     }
   }
 
@@ -260,6 +270,45 @@ class NotificationService {
           sound: 'summary_notification.caf',
         ),
       ),
+    );
+  }
+
+  // ── Notification alertes matchs ────────────────────────────────────────────────
+
+  Future<void> showMatchAlertNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    if (!_initialized) await init();
+
+    await _localNotif.show(
+      id: 3001 + (payload?.hashCode ?? 0) % 1000,
+      title: title,
+      body: body,
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          'bonobo_sports_v2',
+          'Matchs en direct',
+          channelDescription: 'Alertes pour vos matchs de football',
+          importance: Importance.max,
+          priority: Priority.max,
+          icon: '@mipmap/ic_launcher',
+          playSound: true,
+          enableVibration: true,
+          vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
+          sound: const RawResourceAndroidNotificationSound('new_articles'),
+          color: const Color(0xFF1EB45A),
+          category: AndroidNotificationCategory.event,
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentSound: true,
+          presentAlert: true,
+          presentBadge: true,
+          sound: 'new_articles.caf',
+        ),
+      ),
+      payload: payload,
     );
   }
 

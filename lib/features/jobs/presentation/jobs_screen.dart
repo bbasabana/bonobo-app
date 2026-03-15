@@ -173,33 +173,36 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
       ),
       floatingActionButton: _isSearchOpen
           ? null
-          : Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primaryGreen,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryGreen.withValues(alpha: 0.4),
-                    blurRadius: 14,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                shape: const CircleBorder(),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () {
-                    setState(() => _isSearchOpen = true);
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _searchFocus.requestFocus();
-                    });
-                  },
-                  child: const Center(
-                    child: Icon(Icons.search_rounded, color: Colors.white, size: 24),
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 80),
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryGreen,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.4),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() => _isSearchOpen = true);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _searchFocus.requestFocus();
+                      });
+                    },
+                    child: const Center(
+                      child: Icon(Icons.search_rounded, color: Colors.white, size: 24),
+                    ),
                   ),
                 ),
               ),

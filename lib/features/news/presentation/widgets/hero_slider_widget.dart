@@ -1,25 +1,27 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/constants/media_sources.dart';
+// import '../../../../core/constants/media_sources.dart';
+import '../../providers/news_providers.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/widgets/actualisation_overlay.dart';
 import '../../../../shared/widgets/bonobo_article_image.dart';
 import '../../domain/feed_news.dart';
 
-class HeroSliderWidget extends StatefulWidget {
+class HeroSliderWidget extends ConsumerStatefulWidget {
   final List<FeedNews> articles;
 
   const HeroSliderWidget({super.key, required this.articles});
 
   @override
-  State<HeroSliderWidget> createState() => _HeroSliderWidgetState();
+  ConsumerState<HeroSliderWidget> createState() => _HeroSliderWidgetState();
 }
 
-class _HeroSliderWidgetState extends State<HeroSliderWidget> {
+class _HeroSliderWidgetState extends ConsumerState<HeroSliderWidget> {
   final PageController _controller = PageController();
   int _currentPage = 0;
   Timer? _timer;
@@ -126,14 +128,15 @@ class _HeroSliderWidgetState extends State<HeroSliderWidget> {
   }
 }
 
-class _HeroSlide extends StatelessWidget {
+class _HeroSlide extends ConsumerWidget {
   final FeedNews article;
 
   const _HeroSlide({required this.article});
 
   @override
-  Widget build(BuildContext context) {
-    final source = MediaSources.findById(article.sourceId);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sources = ref.watch(mediaSourcesMapProvider);
+    final source = sources[article.sourceId];
     final sourceColor = source?.color ?? AppColors.primaryGreen;
 
     return GestureDetector(

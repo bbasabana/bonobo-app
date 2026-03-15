@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
-enum FeedType { wordpress, rss, drupal }
+enum FeedType { wordpress, rss, drupal, php, other }
 
 class MediaSource extends Equatable {
   final String id;
@@ -12,6 +12,7 @@ class MediaSource extends Equatable {
   final String country;
   final String logoUrl;
   final Color color;
+  final String? cmsType;
 
   const MediaSource({
     required this.id,
@@ -22,7 +23,63 @@ class MediaSource extends Equatable {
     required this.country,
     required this.logoUrl,
     this.color = const Color(0xFF01732C),
+    this.cmsType,
   });
+
+  factory MediaSource.fromJson(Map<String, dynamic> json) {
+    FeedType type = FeedType.other;
+    final typeStr = json['feedType']?.toString().toLowerCase();
+    if (typeStr == 'wordpress') type = FeedType.wordpress;
+    if (typeStr == 'rss') type = FeedType.rss;
+    if (typeStr == 'drupal') type = FeedType.drupal;
+
+    return MediaSource(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      feedUrl: json['feedUrl'] as String,
+      feedType: type,
+      categories: (json['categories'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      country: json['country'] as String? ?? 'CD',
+      logoUrl: json['logoUrl'] as String? ?? '',
+      cmsType: json['cmsType'] as String?,
+      color: json['color'] != null ? _parseColor(json['color'] as String) : const Color(0xFF01732C),
+    );
+  }
+
+  static Color _parseColor(String colorStr) {
+    try {
+      if (colorStr.startsWith('#')) {
+        return Color(int.parse(colorStr.replaceFirst('#', '0xFF')));
+      }
+      return const Color(0xFF01732C);
+    } catch (_) {
+      return const Color(0xFF01732C);
+    }
+  }
+
+  MediaSource copyWith({
+    String? id,
+    String? name,
+    String? feedUrl,
+    FeedType? feedType,
+    List<String>? categories,
+    String? country,
+    String? logoUrl,
+    Color? color,
+    String? cmsType,
+  }) {
+    return MediaSource(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      feedUrl: feedUrl ?? this.feedUrl,
+      feedType: feedType ?? this.feedType,
+      categories: categories ?? this.categories,
+      country: country ?? this.country,
+      logoUrl: logoUrl ?? this.logoUrl,
+      color: color ?? this.color,
+      cmsType: cmsType ?? this.cmsType,
+    );
+  }
 
   /// Label lisible du pays (sans emoji).
   String get countryLabel {
@@ -35,15 +92,15 @@ class MediaSource extends Equatable {
   }
 
   String get initials {
+    if (name.isEmpty) return '??';
     final words = name.split(RegExp(r'[\s\-]'));
-    if (words.length >= 2) {
+    if (words.length >= 2 && words[0].isNotEmpty && words[1].isNotEmpty) {
       return '${words[0][0]}${words[1][0]}'.toUpperCase();
     }
     return name.substring(0, name.length.clamp(0, 2)).toUpperCase();
   }
 
   /// URL du favicon via Google Favicon API.
-  /// Préfixe www. si absent — améliore la résolution pour certains domaines (ex: zoom-eco.net).
   String get faviconUrl {
     try {
       final uri = Uri.parse(feedUrl);

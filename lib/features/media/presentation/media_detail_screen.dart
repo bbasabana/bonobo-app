@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/media_sources.dart';
+// import '../../../core/constants/media_sources.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../features/news/domain/feed_news.dart';
 import '../../../features/news/domain/media_source.dart';
@@ -52,7 +52,8 @@ class _MediaDetailScreenState extends ConsumerState<MediaDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final sourceId = widget.sourceId;
-    final source = MediaSources.findById(sourceId);
+    final sources = ref.watch(mediaSourcesMapProvider);
+    final source = sources[sourceId];
     if (source == null) {
       return Scaffold(
         backgroundColor: const Color(0xFF0E1118),
@@ -365,9 +366,8 @@ class _MediaHeader extends StatelessWidget {
 
   String get _feedTypeLabel {
     switch (source.feedType) {
-      case FeedType.wordpress: return 'WordPress';
       case FeedType.rss: return 'RSS';
-      case FeedType.drupal: return 'Drupal';
+      default: return 'Source';
     }
   }
 

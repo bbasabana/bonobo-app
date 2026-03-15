@@ -26,6 +26,7 @@ class AppConstants {
   static const String hiveTranslationBox = 'translationBox';
 
   static const String keyArticlesAll = 'articles_all';
+  static const String keyMediaSourcesAll = 'media_sources_all';
   static const String keyJobsAll = 'jobs_all';
   static const String keySubscriptions = 'subscriptions';
   static const String keyLastFetch = 'last_fetch';

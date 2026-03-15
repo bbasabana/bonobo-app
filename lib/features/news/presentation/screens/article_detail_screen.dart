@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/media_sources.dart';
+// import '../../../../core/constants/media_sources.dart'; // No longer needed
 import '../../../../core/services/analytics_service.dart';
 import '../../../../core/services/pdf_export_service.dart';
 import '../../../../core/utils/date_formatter.dart';
@@ -269,7 +269,8 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen>
 
     final article = _article!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final source = MediaSources.findById(article.sourceId);
+    final sources = ref.watch(mediaSourcesMapProvider);
+    final source = sources[article.sourceId];
     final sourceColor = source?.color ?? AppColors.primaryGreen;
     final subscriptions = ref.watch(subscriptionProvider);
     final isSubscribed = subscriptions.contains(article.sourceId);

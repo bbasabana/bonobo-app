@@ -5,12 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/media_sources.dart';
 import '../../news/domain/media_source.dart';
-import '../../../shared/local_storage.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/subscription_provider.dart';
 import '../../../shared/widgets/bonobo_soft_toast.dart';
+import '../../news/providers/news_providers.dart';
 
 class MediaPickerScreen extends ConsumerStatefulWidget {
   const MediaPickerScreen({super.key});
@@ -33,8 +32,12 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
     super.dispose();
   }
 
+  List<MediaSource> get _allSources {
+    return ref.watch(dynamicMediaSourcesProvider).valueOrNull ?? [];
+  }
+
   List<MediaSource> get _filtered {
-    var list = MediaSources.all;
+    var list = _allSources;
     if (_query.isNotEmpty) {
       final q = _query.toLowerCase();
       list = list.where((s) =>
@@ -54,7 +57,7 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
 
   List<String> get _allCategories {
     final cats = <String>{};
-    for (final s in MediaSources.all) cats.addAll(s.categories);
+    for (final s in _allSources) cats.addAll(s.categories);
     return cats.toList()..sort();
   }
 
@@ -201,107 +204,134 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
               divider: divider,
               statusBarH: statusBarH,
               followedCount: subscriptions.length,
-              totalCount: MediaSources.all.length,
+              totalCount: _allSources.length,
             ),
 
             // ── Liste scrollable
             Expanded(
-              child: filtered.isEmpty
-                  ? _EmptySearch(isDark: isDark, onClear: _clearAll)
-                  : CustomScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      slivers: [
-                        // Bandeau login
-                        if (!_isLoggedIn)
-                          SliverToBoxAdapter(
-                            child: _LoginBanner(
-                              isDark: isDark,
-                              onTap: () => context.push('/compte'),
-                            ),
-                          ),
-
-                        // Section abonnés
-                        if (followed.isNotEmpty) ...[
-                          _SectionHeader(
-                            title: 'Mes abonnements',
-                            count: followed.length,
-                            accentColor: AppColors.primaryGreen,
+              child: ref.watch(dynamicMediaSourcesProvider).when(
+                data: (sources) {
+                  final filtered = _filtered;
+                  if (filtered.isEmpty) {
+                    return _EmptySearch(isDark: isDark, onClear: _clearAll);
+                  }
+                  
+                  final followed = filtered.where((s) => subscriptions.contains(s.id)).toList();
+                  final others = filtered.where((s) => !subscriptions.contains(s.id)).toList();
+                  
+                  return CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      // Bandeau login
+                      if (!_isLoggedIn)
+                        SliverToBoxAdapter(
+                          child: _LoginBanner(
                             isDark: isDark,
-                            action: subscriptions.isNotEmpty && _isLoggedIn
-                                ? _UnsubscribeAllBtn(
-                                    isDark: isDark,
-                                    onTap: () {
-                                      for (final id in List.from(subscriptions)) {
-                                        ref.read(subscriptionProvider.notifier).unsubscribe(id);
-                                      }
-                                      BonoboSoftToast.show(context,
-                                        message: 'Tous les abonnements supprimés',
-                                        icon: Icons.notifications_off_rounded,
-                                        iconColor: Colors.orangeAccent,
-                                      );
-                                    },
-                                  )
-                                : null,
+                            onTap: () => context.push('/compte'),
                           ),
-                          SliverPadding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            sliver: SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (_, i) => _MediaRow(
-                                  source: followed[i],
-                                  isSubscribed: true,
-                                  isDark: isDark,
-                                  surface: surface,
-                                  divider: divider,
-                                  labelColor: labelColor,
-                                  subColor: subColor,
-                                  onToggle: () => _onToggle(
-                                      followed[i].id, followed[i].name, true),
-                                  onTap: () =>
-                                      context.push('/media/${followed[i].id}'),
-                                ),
-                                childCount: followed.length,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
 
-                        // Section autres médias
-                        if (others.isNotEmpty) ...[
-                          _SectionHeader(
-                            title: followed.isEmpty
-                                ? '${filtered.length} médias'
-                                : 'Autres médias',
-                            count: followed.isEmpty ? null : others.length,
-                            accentColor: isDark
-                                ? const Color(0xFF8A96A8)
-                                : AppColors.textSecondary,
-                            isDark: isDark,
-                          ),
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-                            sliver: SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (_, i) => _MediaRow(
-                                  source: others[i],
-                                  isSubscribed: false,
+                      // Section abonnés
+                      if (followed.isNotEmpty) ...[
+                        _SectionHeader(
+                          title: 'Mes abonnements',
+                          count: followed.length,
+                          accentColor: AppColors.primaryGreen,
+                          isDark: isDark,
+                          action: subscriptions.isNotEmpty && _isLoggedIn
+                              ? _UnsubscribeAllBtn(
                                   isDark: isDark,
-                                  surface: surface,
-                                  divider: divider,
-                                  labelColor: labelColor,
-                                  subColor: subColor,
-                                  onToggle: () => _onToggle(
-                                      others[i].id, others[i].name, false),
-                                  onTap: () =>
-                                      context.push('/media/${others[i].id}'),
-                                ),
-                                childCount: others.length,
+                                  onTap: () {
+                                    for (final id in List.from(subscriptions)) {
+                                      ref.read(subscriptionProvider.notifier).unsubscribe(id);
+                                    }
+                                    BonoboSoftToast.show(context,
+                                      message: 'Tous les abonnements supprimés',
+                                      icon: Icons.notifications_off_rounded,
+                                      iconColor: Colors.orangeAccent,
+                                    );
+                                  },
+                                )
+                              : null,
+                        ),
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (_, i) => _MediaRow(
+                                source: followed[i],
+                                isSubscribed: true,
+                                isDark: isDark,
+                                surface: surface,
+                                divider: divider,
+                                labelColor: labelColor,
+                                subColor: subColor,
+                                onToggle: () => _onToggle(
+                                    followed[i].id, followed[i].name, true),
+                                onTap: () =>
+                                    context.push('/media/${followed[i].id}'),
                               ),
+                              childCount: followed.length,
                             ),
                           ),
-                        ],
+                        ),
                       ],
-                    ),
+
+                      // Section autres médias
+                      if (others.isNotEmpty) ...[
+                        _SectionHeader(
+                          title: followed.isEmpty
+                              ? '${filtered.length} médias'
+                              : 'Autres médias',
+                          count: followed.isEmpty ? null : others.length,
+                          accentColor: isDark
+                              ? const Color(0xFF8A96A8)
+                              : AppColors.textSecondary,
+                          isDark: isDark,
+                        ),
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (_, i) => _MediaRow(
+                                source: others[i],
+                                isSubscribed: false,
+                                isDark: isDark,
+                                surface: surface,
+                                divider: divider,
+                                labelColor: labelColor,
+                                subColor: subColor,
+                                onToggle: () => _onToggle(
+                                    others[i].id, others[i].name, false),
+                                onTap: () =>
+                                    context.push('/media/${others[i].id}'),
+                              ),
+                              childCount: others.length,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.primaryGreen),
+                ),
+                error: (err, stack) => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cloud_off_rounded, size: 48, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text('Impossible de charger les sources'),
+                      TextButton(
+                        onPressed: () => ref.invalidate(dynamicMediaSourcesProvider),
+                        child: const Text('Réessayer'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -461,7 +491,7 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
   }
 
   Widget _buildFilterChips(bool isDark, Color subColor) {
-    final countries = MediaSources.all.map((s) => s.country).toSet().toList()
+    final countries = _allSources.map((s) => s.country).toSet().toList()
       ..sort();
     final categories = _allCategories.take(8).toList();
     final hasAnyFilter =

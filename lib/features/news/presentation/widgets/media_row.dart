@@ -1,59 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/media_sources.dart';
+import '../../providers/news_providers.dart';
 import '../../domain/media_source.dart';
 
-class MediaRow extends StatelessWidget {
+class MediaRow extends ConsumerWidget {
   const MediaRow({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(
-            children: [
-              const Text(
-                'Médias',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => context.push('/media-picker'),
-                child: Text(
-                  'Choisir mes médias',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.primaryGreen,
-                    fontWeight: FontWeight.w600,
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref.watch(dynamicMediaSourcesProvider).when(
+      data: (sources) {
+        if (sources.isEmpty) return const SizedBox.shrink();
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  const Text(
+                    'Médias',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => context.push('/media-picker'),
+                    child: const Text(
+                      'Choisir mes médias',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primaryGreen,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 80,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: MediaSources.all.length,
-            itemBuilder: (context, index) {
-              final source = MediaSources.all[index];
-              return _MediaChip(source: source, isDark: isDark);
-            },
-          ),
-        ),
-      ],
+            ),
+            SizedBox(
+              height: 80,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: sources.length,
+                itemBuilder: (context, index) {
+                  final source = sources[index];
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  return _MediaChip(source: source, isDark: isDark);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox(
+        height: 100,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen)),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }

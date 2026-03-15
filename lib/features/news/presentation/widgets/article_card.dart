@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/media_sources.dart';
+// import '../../../../core/constants/media_sources.dart';
+import '../../providers/news_providers.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/widgets/bonobo_article_image.dart';
 import '../../domain/feed_news.dart';
@@ -12,7 +14,7 @@ enum ArticleCardStyle { standard, compact, condensed }
 // ─────────────────────────────────────────────
 //  ArticleCard (legacy list card — kept for compatibility)
 // ─────────────────────────────────────────────
-class ArticleCard extends StatelessWidget {
+class ArticleCard extends ConsumerWidget {
   final FeedNews article;
   final ArticleCardStyle style;
   final bool showBadge;
@@ -25,7 +27,7 @@ class ArticleCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (style == ArticleCardStyle.condensed) {
       return ArticleCondensedCard(article: article);
     }
@@ -36,15 +38,16 @@ class ArticleCard extends StatelessWidget {
 // ─────────────────────────────────────────────
 //  ArticleGridCard — High-end E-commerce Style
 // ─────────────────────────────────────────────
-class ArticleGridCard extends StatelessWidget {
+class ArticleGridCard extends ConsumerWidget {
   final FeedNews article;
 
   const ArticleGridCard({super.key, required this.article});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final source = MediaSources.findById(article.sourceId);
+    final sources = ref.watch(mediaSourcesMapProvider);
+    final source = sources[article.sourceId];
     final sourceColor = source?.color ?? AppColors.primaryGreen;
 
     return GestureDetector(
@@ -181,16 +184,17 @@ class ArticleGridCard extends StatelessWidget {
 // ─────────────────────────────────────────────
 //  ArticleListCard — Clean & Refined
 // ─────────────────────────────────────────────
-class ArticleListCard extends StatelessWidget {
+class ArticleListCard extends ConsumerWidget {
   final FeedNews article;
   final bool showBadge;
 
   const ArticleListCard({super.key, required this.article, this.showBadge = false});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final source = MediaSources.findById(article.sourceId);
+    final sources = ref.watch(mediaSourcesMapProvider);
+    final source = sources[article.sourceId];
     final sourceColor = source?.color ?? AppColors.primaryGreen;
 
     return GestureDetector(
@@ -304,15 +308,16 @@ class ArticleListCard extends StatelessWidget {
 // ─────────────────────────────────────────────
 //  ArticleFeaturedCard — Cinematic Full Width
 // ─────────────────────────────────────────────
-class ArticleFeaturedCard extends StatelessWidget {
+class ArticleFeaturedCard extends ConsumerWidget {
   final FeedNews article;
 
   const ArticleFeaturedCard({super.key, required this.article});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final source = MediaSources.findById(article.sourceId);
+    final sources = ref.watch(mediaSourcesMapProvider);
+    final source = sources[article.sourceId];
     final sourceColor = source?.color ?? AppColors.primaryGreen;
 
     return GestureDetector(
@@ -427,15 +432,16 @@ class ArticleFeaturedCard extends StatelessWidget {
 // ─────────────────────────────────────────────
 //  ArticleCondensedCard — Minimal List Item
 // ─────────────────────────────────────────────
-class ArticleCondensedCard extends StatelessWidget {
+class ArticleCondensedCard extends ConsumerWidget {
   final FeedNews article;
 
   const ArticleCondensedCard({super.key, required this.article});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final source = MediaSources.findById(article.sourceId);
+    final sources = ref.watch(mediaSourcesMapProvider);
+    final source = sources[article.sourceId];
     final sourceColor = source?.color ?? AppColors.primaryGreen;
 
     return GestureDetector(

@@ -1,16 +1,24 @@
 import 'package:dio/dio.dart';
 import 'package:webfeed_plus/webfeed_plus.dart';
 
+import '../../../core/constants/app_config.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../../core/constants/media_sources.dart';
+// import '../../../core/constants/media_sources.dart';
 import '../../../core/utils/html_parser.dart';
 import '../domain/feed_news.dart';
 import '../domain/media_source.dart';
 
-class NewsService {
+abstract class NewsService {
+  Future<List<FeedNews>> fetchAllFeeds();
+  Future<List<FeedNews>> fetchFeedForSource(String sourceId);
+  Future<List<FeedNews>> fetchFeedForSourceWithLimit(String sourceId, int limit);
+  Future<List<MediaSource>> fetchMediaSources();
+}
+
+class LegacyNewsService implements NewsService {
   final Dio _dio;
 
-  NewsService({Dio? dio})
+  LegacyNewsService({Dio? dio})
       : _dio = dio ??
             Dio(BaseOptions(
               connectTimeout: AppConstants.feedFetchTimeout,
@@ -20,8 +28,21 @@ class NewsService {
               headers: {'Accept': 'application/json, application/rss+xml, text/xml'},
             ));
 
+  @override
+  Future<List<MediaSource>> fetchMediaSources() async {
+    try {
+      final res = await _dio.get('${AppConfig.apiBaseUrl}/api/v1/media-sources');
+      final List<dynamic> sources = res.data['sources'] ?? [];
+      return sources.map((json) => MediaSource.fromJson(json)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
   Future<List<FeedNews>> fetchAllFeeds() async {
-    final futures = MediaSources.all.map((source) =>
+    final sources = await fetchMediaSources();
+    final futures = sources.map((source) =>
         _fetchSingleFeed(source)
             .timeout(
               AppConstants.perSourceFetchTimeout,
@@ -37,17 +58,19 @@ class NewsService {
     return deduped;
   }
 
+  @override
   Future<List<FeedNews>> fetchFeedForSource(String sourceId) async {
-    final source = MediaSources.findById(sourceId);
+    final sources = await fetchMediaSources();
+    final source = sources.firstWhere((s) => s.id == sourceId, orElse: () => throw Exception('Source not found'));
     if (source == null) return [];
     return _fetchSingleFeed(source);
   }
 
-  /// Fetch dédié à la page média — limite personnalisée (ex. 45 articles).
-  /// Contourne la limite globale `maxArticlesPerFeed` de la home.
+  @override
   Future<List<FeedNews>> fetchFeedForSourceWithLimit(
       String sourceId, int limit) async {
-    final source = MediaSources.findById(sourceId);
+    final sources = await fetchMediaSources();
+    final source = sources.firstWhere((s) => s.id == sourceId, orElse: () => throw Exception('Source not found'));
     if (source == null) return [];
     if (source.feedType == FeedType.rss) {
       return _fetchRssWithLimit(source, limit);
@@ -105,9 +128,6 @@ class NewsService {
     return _fetchWordPress(source);
   }
 
-  /// Construit l'URL WordPress optimisée :
-  /// - per_page limité
-  /// - _fields pour n'envoyer que les champs nécessaires (évite yoast_head, _links, meta…)
   String _buildWordPressUrl(String baseUrl) {
     final uri = Uri.parse(baseUrl);
     final params = Map<String, String>.from(uri.queryParameters);
@@ -146,12 +166,10 @@ class NewsService {
       final contentRendered =
           (post['content'] as Map<String, dynamic>?)?['rendered']?.toString() ?? '';
 
-      // Priorité à l'excerpt pour l'aperçu — évite de parser le contenu complet
       final excerpt = excerptRendered.isNotEmpty
           ? HtmlUtils.cleanExcerpt(excerptRendered)
           : HtmlUtils.cleanExcerpt(contentRendered);
 
-      // Contenu complet pour la vue détail (HTML brut, strippé à la lecture)
       final content = HtmlUtils.stripHtml(contentRendered);
 
       String? imageUrl =

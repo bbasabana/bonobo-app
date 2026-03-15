@@ -1,8 +1,7 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/local_storage.dart';
@@ -10,6 +9,8 @@ import '../../../../shared/models/local_reaction.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/providers/reactions_provider.dart';
 import '../../../../shared/widgets/bonobo_soft_toast.dart';
+import '../../domain/comment.dart';
+import '../../providers/comment_providers.dart';
 
 /// Section réactions complète : likes animés + commentaires style Facebook.
 class ArticleReactionsSection extends ConsumerStatefulWidget {
@@ -127,17 +128,21 @@ class _ArticleReactionsSectionState extends ConsumerState<ArticleReactionsSectio
       );
       return;
     }
-    await ref.read(reactionsProvider(widget.articleId).notifier).addComment(_currentUser, text);
-    _commentController.clear();
-    setState(() => _showCommentInput = false);
-    _focusNode.unfocus();
+    
+    final success = await ref.read(commentActionProvider.notifier).postComment(widget.articleId, text);
+    if (success) {
+      _commentController.clear();
+      setState(() => _showCommentInput = false);
+      _focusNode.unfocus();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(reactionsProvider(widget.articleId));
     final reaction = state.reaction;
-    final comments = state.comments;
+    final commentsAsync = ref.watch(commentsProvider(widget.articleId));
+    final actionState = ref.watch(commentActionProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : AppColors.textPrimary;
     final subColor = isDark ? Colors.white54 : AppColors.textSecondary;
@@ -163,16 +168,21 @@ class _ArticleReactionsSectionState extends ConsumerState<ArticleReactionsSectio
               Text('Réactions',
                 style: TextStyle(color: textColor, fontWeight: FontWeight.w800, fontSize: 16)),
               const SizedBox(width: 8),
-              if (comments.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: widget.accentColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text('${comments.length}',
-                    style: TextStyle(color: widget.accentColor, fontSize: 11, fontWeight: FontWeight.w800)),
-                ),
+              commentsAsync.when(
+                data: (comments) => comments.isNotEmpty 
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: widget.accentColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text('${comments.length}',
+                        style: TextStyle(color: widget.accentColor, fontSize: 11, fontWeight: FontWeight.w800)),
+                    )
+                  : const SizedBox.shrink(),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
             ],
           ),
         ),
@@ -270,7 +280,7 @@ class _ArticleReactionsSectionState extends ConsumerState<ArticleReactionsSectio
                     decoration: BoxDecoration(
                       color: cardColor,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: widget.accentColor.withValues(alpha: 0.4)),
+                      border: Border.all(color: widget.accentColor.withOpacity(0.4)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,31 +340,44 @@ class _ArticleReactionsSectionState extends ConsumerState<ArticleReactionsSectio
         ),
 
         // ── Liste des commentaires
-        if (comments.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          ...comments.map((c) => _CommentCard(
-            comment: c,
-            accentColor: widget.accentColor,
-            isDark: isDark,
-            currentUser: _currentUser,
-            onLike: () => ref.read(reactionsProvider(widget.articleId).notifier).likeComment(c.id),
-            onDelete: () => ref.read(reactionsProvider(widget.articleId).notifier).deleteComment(c.id, _currentUser),
-          )),
-        ] else ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Row(
-              children: [
-                Icon(Icons.chat_bubble_outline_rounded, size: 18, color: isDark ? Colors.white24 : Colors.grey.shade400),
-                const SizedBox(width: 10),
-                Text(
-                  'Soyez le premier à commenter cet article.',
-                  style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 13),
+        commentsAsync.when(
+          data: (comments) {
+            if (comments.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.chat_bubble_outline_rounded, size: 18, color: isDark ? Colors.white24 : Colors.grey.shade400),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Soyez le premier à commenter cet article.',
+                      style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 13),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            }
+            return Column(
+              children: comments.map((c) => _CommentCard(
+                comment: c,
+                accentColor: widget.accentColor,
+                isDark: isDark,
+                currentUser: _currentUser,
+                // On cache les likes de commentaires car non implémentés sur le backend pour l'instant
+                onLike: () {}, 
+                onDelete: () {}, // À implémenter plus tard si besoin
+              )).toList(),
+            );
+          },
+          loading: () => const Center(child: Padding(
+            padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )),
+          error: (err, _) => Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Text('Erreur: $err', style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
           ),
-        ],
+        ),
 
         const SizedBox(height: 16),
       ],
@@ -402,7 +425,7 @@ class _Divider extends StatelessWidget {
 
 // ─── Carte commentaire ────────────────────────────────────────────────────────
 class _CommentCard extends StatelessWidget {
-  final LocalComment comment;
+  final Comment comment;
   final Color accentColor;
   final bool isDark;
   final String currentUser;
@@ -440,59 +463,34 @@ class _CommentCard extends StatelessWidget {
             // Header : avatar + nom + date
             Row(
               children: [
-                _Avatar(name: comment.authorName, color: accentColor, size: 34),
+                if (comment.author.avatarUrl != null)
+                  ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: comment.author.avatarUrl!,
+                      width: 34, height: 34,
+                      fit: BoxFit.cover,
+                      errorWidget: (_,__,___) => _Avatar(name: comment.author.displayName, color: accentColor, size: 34),
+                    ),
+                  )
+                else
+                  _Avatar(name: comment.author.displayName, color: accentColor, size: 34),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(comment.authorName, style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 13)),
+                      Text(comment.author.displayName, style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 13)),
                       Text(DateFormatter.relative(comment.createdAt), style: TextStyle(color: subColor, fontSize: 11)),
                     ],
                   ),
                 ),
-                if (comment.authorName == currentUser)
-                  GestureDetector(
-                    onTap: onDelete,
-                    child: Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent.withValues(alpha: 0.7)),
-                  ),
               ],
             ),
             const SizedBox(height: 8),
             // Texte
-            Text(comment.text, style: TextStyle(color: textColor, fontSize: 13, height: 1.45)),
+            Text(comment.content, style: TextStyle(color: textColor, fontSize: 13, height: 1.45)),
             const SizedBox(height: 8),
-            // Actions
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: onLike,
-                  child: Row(
-                    children: [
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                        child: Icon(
-                          comment.isLikedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                          key: ValueKey(comment.isLikedByMe),
-                          size: 16,
-                          color: comment.isLikedByMe ? Colors.pinkAccent : subColor,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        comment.likes > 0 ? '${comment.likes}' : 'J\'aime',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: comment.isLikedByMe ? Colors.pinkAccent : subColor,
-                          fontWeight: comment.isLikedByMe ? FontWeight.w700 : FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            // On masque les likes/delete pour la V1 backend
           ],
         ),
       ),
@@ -518,7 +516,7 @@ class _Avatar extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [color, color.withValues(alpha: 0.7)],
+          colors: [color, color.withOpacity(0.7)],
         ),
         shape: BoxShape.circle,
       ),

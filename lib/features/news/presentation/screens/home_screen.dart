@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/media_sources.dart';
+import '../../../../shared/widgets/media_favicon.dart';
 import '../../../../shared/widgets/media_favicon.dart';
 import '../../../../core/providers/theme_provider.dart';
 import '../../domain/media_source.dart';
@@ -59,7 +59,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(() {
-      final solid = _scrollController.offset > _kHeroHeight - kToolbarHeight - 20;
+      final solid = _scrollController.offset > 20;
       if (solid != _appBarSolid) setState(() => _appBarSolid = solid);
     });
   }
@@ -283,13 +283,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               top: 0,
               left: 0,
               right: 0,
-              child: _EditorialHeader(
-                statusBarH: statusBarH,
-                isDark: Theme.of(context).brightness == Brightness.dark,
-                onSearch: () => context.push('/search'),
-                onAccount: () => context.push('/compte'),
-                onTheme: () => ref.read(themeProvider.notifier).toggle(),
-                themeMode: ref.watch(themeProvider),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                decoration: BoxDecoration(
+                  color: _appBarSolid
+                      ? (Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF0E1118).withOpacity(0.98)
+                          : const Color(0xFFF2F4F7).withOpacity(0.98))
+                      : Colors.transparent,
+                  boxShadow: _appBarSolid
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ]
+                      : [],
+                ),
+                child: _EditorialHeader(
+                  statusBarH: statusBarH,
+                  isDark: Theme.of(context).brightness == Brightness.dark,
+                  onSearch: () => context.push('/search'),
+                  onAccount: () => context.push('/compte'),
+                  onTheme: () => ref.read(themeProvider.notifier).toggle(),
+                  themeMode: ref.watch(themeProvider),
+                  isSolid: _appBarSolid,
+                ),
               ),
             ),
 
@@ -570,13 +590,14 @@ class _EmptyFirstLoad extends StatelessWidget {
 // ─────────────────────────────────────────────
 //  Bande horizontale de 6 articles (entre slider et Média Source)
 // ─────────────────────────────────────────────
-class _HorizontalArticleStrip extends StatelessWidget {
+class _HorizontalArticleStrip extends ConsumerWidget {
   final List<FeedNews> articles;
 
   const _HorizontalArticleStrip({required this.articles});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sourcesMap = ref.watch(mediaSourcesMapProvider);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       color: Theme.of(context).brightness == Brightness.dark
@@ -603,9 +624,9 @@ class _HorizontalArticleStrip extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: articles.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
+            itemBuilder: (context, index) {
                 final article = articles[index];
-                final source = MediaSources.findById(article.sourceId);
+                final source = sourcesMap[article.sourceId];
                 final sourceColor = source?.color ?? AppColors.primaryGreen;
                 return GestureDetector(
                   onTap: () => context.push(
@@ -887,9 +908,11 @@ class _ThemeOption extends StatelessWidget {
 //  Section Média Source — style soft, adaptatif dark/light
 // ─────────────────────────────────────────────
 /// Section "Nos médias partenaires" — fond immersif inspiré de l'espace journaliste.
-class _MediaSourceSection extends StatelessWidget {
+class _MediaSourceSection extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncSources = ref.watch(dynamicMediaSourcesProvider);
+    final sources = asyncSources.valueOrNull ?? [];
     return Stack(
       children: [
         // ── Fond vert uniforme — même ton que l'espace journaliste
@@ -978,10 +1001,10 @@ class _MediaSourceSection extends StatelessWidget {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       padding: EdgeInsets.zero,
-                      itemCount: MediaSources.all.length,
+                      itemCount: sources.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (ctx, i) => _MediaSourceBadge(
-                        source: MediaSources.all[i],
+                        source: sources[i],
                         isDark: false,
                       ),
                     ),
@@ -1469,6 +1492,7 @@ class _EditorialHeader extends ConsumerWidget {
   final VoidCallback onAccount;
   final VoidCallback onTheme;
   final ThemeMode themeMode;
+  final bool isSolid;
 
   const _EditorialHeader({
     required this.statusBarH,
@@ -1477,6 +1501,7 @@ class _EditorialHeader extends ConsumerWidget {
     required this.onAccount,
     required this.onTheme,
     required this.themeMode,
+    this.isSolid = false,
   });
 
   static final _dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -1497,6 +1522,9 @@ class _EditorialHeader extends ConsumerWidget {
       ThemeMode.light  => Icons.light_mode_rounded,
       ThemeMode.dark   => Icons.dark_mode_rounded,
     };
+    final bool useDarkElements = !isDark && isSolid;
+    final textColor = useDarkElements ? AppColors.textPrimary : Colors.white;
+
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -1516,10 +1544,11 @@ class _EditorialHeader extends ConsumerWidget {
                   'assets/images/logo_icon_white.png',
                   height: 48,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Text(
+                  color: useDarkElements ? AppColors.primaryGreenStart : null,
+                  errorBuilder: (_, __, ___) => Text(
                     'BONOBO',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: textColor,
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.5,
@@ -1529,11 +1558,11 @@ class _EditorialHeader extends ConsumerWidget {
               ),
               const Spacer(),
               // Actions
-              _HeaderBtn(icon: Icons.search_rounded, onTap: onSearch),
+              _HeaderBtn(icon: Icons.search_rounded, onTap: onSearch, useDarkElements: useDarkElements),
               const SizedBox(width: 6),
-              _HeaderBtn(icon: themeIcon, onTap: () => ref.read(themeProvider.notifier).toggle()),
+              _HeaderBtn(icon: themeIcon, onTap: () => ref.read(themeProvider.notifier).toggle(), useDarkElements: useDarkElements),
               const SizedBox(width: 6),
-              _HeaderBtn(icon: Icons.person_outline_rounded, onTap: onAccount),
+              _HeaderBtn(icon: Icons.person_outline_rounded, onTap: onAccount, useDarkElements: useDarkElements),
             ],
           ),
         ],
@@ -1546,8 +1575,9 @@ class _EditorialHeader extends ConsumerWidget {
 class _HeaderBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final bool useDarkElements;
 
-  const _HeaderBtn({required this.icon, required this.onTap});
+  const _HeaderBtn({required this.icon, required this.onTap, this.useDarkElements = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1557,11 +1587,13 @@ class _HeaderBtn extends StatelessWidget {
         width: 34,
         height: 34,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: useDarkElements ? Colors.black.withOpacity(0.05) : Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+          border: Border.all(
+              color: useDarkElements ? Colors.black.withOpacity(0.05) : Colors.white.withOpacity(0.08),
+              width: 0.8),
         ),
-        child: Icon(icon, color: Colors.white, size: 17),
+        child: Icon(icon, color: useDarkElements ? AppColors.textPrimary : Colors.white, size: 17),
       ),
     );
   }

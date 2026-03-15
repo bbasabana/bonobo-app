@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/constants/app_constants.dart';
 import '../features/news/domain/feed_news.dart';
+import '../features/news/domain/media_source.dart';
 import '../features/jobs/domain/job_offer.dart';
 import 'models/local_reaction.dart';
 
@@ -22,7 +23,7 @@ class LocalStorage {
     _reactionsBox = await Hive.openBox<String>('reactionsBox');
   }
 
-  // --- News ---
+  // --- News Articles ---
 
   static Future<void> saveArticles(List<FeedNews> articles, {String key = AppConstants.keyArticlesAll}) async {
     final json = jsonEncode(articles.map((a) => a.toJson()).toList());
@@ -43,6 +44,39 @@ class LocalStorage {
 
   static bool isNewsExpired({String key = AppConstants.keyArticlesAll}) {
     return _isExpired('${key}_ts', AppConstants.feedCacheTtl);
+  }
+
+  // --- Dynamic Media Sources ---
+
+  static Future<void> saveMediaSources(List<MediaSource> sources) async {
+    final json = jsonEncode(sources.map((s) => {
+      'id': s.id,
+      'name': s.name,
+      'feedUrl': s.feedUrl,
+      'feedType': s.feedType.toString().split('.').last,
+      'categories': s.categories,
+      'country': s.country,
+      'logoUrl': s.logoUrl,
+      'cmsType': s.cmsType,
+      'color': '#${s.color.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
+    }).toList());
+    await _newsBox.put(AppConstants.keyMediaSourcesAll, json);
+    await _newsBox.put('${AppConstants.keyMediaSourcesAll}_ts', DateTime.now().toIso8601String());
+  }
+
+  static List<MediaSource> getMediaSources() {
+    final json = _newsBox.get(AppConstants.keyMediaSourcesAll);
+    if (json == null) return [];
+    try {
+      final list = jsonDecode(json) as List;
+      return list.map((e) => MediaSource.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static bool isMediaSourcesExpired() {
+    return _isExpired('${AppConstants.keyMediaSourcesAll}_ts', const Duration(days: 1));
   }
 
   // --- Jobs ---
@@ -83,8 +117,6 @@ class LocalStorage {
   static Future<void> saveSubscriptions(List<String> sourceIds) async {
     await _prefsBox.put(AppConstants.keySubscriptions, jsonEncode(sourceIds));
   }
-
-  // --- Auth ---
 
   // --- Article font size ---
 
@@ -141,7 +173,6 @@ class LocalStorage {
   static String? getAvatarUrl() => _prefsBox.get('avatar_url');
   static Future<void> saveAvatarUrl(String url) => _prefsBox.put('avatar_url', url);
 
-  /// ID anonyme pour les analytics (lecteurs non connectés).
   static String getAnonymousId() {
     var id = _prefsBox.get('anonymous_id');
     if (id == null) {
@@ -184,8 +215,6 @@ class LocalStorage {
     return DateTime.now().difference(ts) > ttl;
   }
 
-  /// Force le prochain fetch à re-télécharger (marque le cache comme expiré)
-  /// SANS effacer les articles. Ainsi l'UI garde les données en attendant.
   static Future<void> markNewsExpired({String key = AppConstants.keyArticlesAll}) async {
     await _newsBox.delete('${key}_ts');
   }
@@ -270,7 +299,7 @@ class LocalStorage {
     await _reactionsBox.put('comments_$articleId', jsonEncode(comments.map((c) => c.toJson()).toList()));
   }
 
-  // --- Marketing Promos ---
+  // --- Marketing ---
 
   static String getMarketingStatus(String promoId) {
     return _prefsBox.get('marketing_$promoId') ?? 'new';
@@ -286,7 +315,27 @@ class LocalStorage {
     return ts != null ? DateTime.tryParse(ts) : null;
   }
 
-  // --- Splash Screen ---
+  // --- Sports ---
+
+  static List<String> getMatchAlertIds() {
+    final json = _prefsBox.get('match_alert_ids');
+    if (json == null) return [];
+    try {
+      return List<String>.from(jsonDecode(json) as List);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<void> toggleMatchAlert(String matchId) async {
+    final ids = getMatchAlertIds();
+    if (ids.contains(matchId)) {
+      ids.remove(matchId);
+    } else {
+      ids.add(matchId);
+    }
+    await _prefsBox.put('match_alert_ids', jsonEncode(ids));
+  }
 
   static bool getSplashSeen() {
     return _prefsBox.get('splash_seen') == 'true';
@@ -295,8 +344,6 @@ class LocalStorage {
   static Future<void> setSplashSeen() async {
     await _prefsBox.put('splash_seen', 'true');
   }
-
-  // --- Utils ---
 
   static Future<void> clearAll() async {
     await _newsBox.clear();
