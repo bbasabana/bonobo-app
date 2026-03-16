@@ -7,7 +7,7 @@ import '../../../core/constants/app_config.dart';
 /// Modèle de réponse auth (OTP ou social).
 class AuthResponse {
   final String token;
-  final String refreshToken;
+  final String? refreshToken;
   final String userId;
   final String email;
   final String role;
@@ -16,7 +16,7 @@ class AuthResponse {
 
   const AuthResponse({
     required this.token,
-    required this.refreshToken,
+    this.refreshToken,
     required this.userId,
     required this.email,
     required this.role,
@@ -28,7 +28,7 @@ class AuthResponse {
     final user = json['user'] as Map<String, dynamic>? ?? {};
     return AuthResponse(
       token: json['token'] as String? ?? '',
-      refreshToken: json['refreshToken'] as String? ?? '',
+      refreshToken: json['refreshToken'] as String?,
       userId: user['id'] as String? ?? '',
       email: user['email'] as String? ?? '',
       role: user['role'] as String? ?? 'user',
@@ -98,12 +98,22 @@ class AuthService {
   Future<AuthResponse> socialLogin(
     String provider,
     String idToken, {
+    required String email,
+    String? displayName,
+    String? avatarUrl,
     String role = 'user',
   }) async {
     try {
       final res = await _dio.post(
         '/api/v1/auth/social',
-        data: {'provider': provider, 'idToken': idToken, 'role': role},
+        data: {
+          'provider': provider,
+          'idToken': idToken,
+          'email': email,
+          'displayName': displayName,
+          'avatarUrl': avatarUrl,
+          'role': role,
+        },
       );
       return AuthResponse.fromJson(res.data as Map<String, dynamic>);
     } on DioException catch (e) {

@@ -7,6 +7,7 @@ import '../domain/media_source.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../shared/local_storage.dart';
 import '../../../core/constants/media_sources.dart';
+import '../../categories/providers/category_providers.dart';
 
 final newsServiceProvider = Provider<NewsService>((ref) => BackendNewsService());
 
@@ -21,10 +22,12 @@ final newsLastErrorProvider = StateProvider<String?>((ref) => null);
 /// Provider dynamic des sources (depuis le backend).
 final dynamicMediaSourcesProvider = FutureProvider<List<MediaSource>>((ref) async {
   final service = ref.watch(newsServiceProvider);
-  final cached = LocalStorage.getMediaSources(); // Should implement this if possible, or just fetch for now
+  final cached = LocalStorage.getMediaSources();
   
   if (cached.isNotEmpty) {
-    _refreshSources(ref, service);
+    if (LocalStorage.isMediaSourcesExpired()) {
+      _refreshSources(ref, service);
+    }
     return cached;
   }
   
@@ -182,8 +185,15 @@ final heroArticlesProvider = FutureProvider<List<FeedNews>>((ref) async {
 /// → le provider retourne le cache immédiatement + lance _backgroundRefresh.
 final refreshNewsProvider = Provider<Future<void> Function()>((ref) {
   return () async {
+    // Marquer tout comme expiré
     await LocalStorage.markNewsExpired();
+    await LocalStorage.markMediaSourcesExpired();
+    await LocalStorage.markCategoriesExpired();
+    
+    // Invalider les providers pour forcer un re-fetch
     ref.invalidate(newsListProvider);
+    ref.invalidate(dynamicMediaSourcesProvider);
+    ref.invalidate(categoriesProvider);
   };
 });
 

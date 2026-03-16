@@ -137,10 +137,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   void _onSocialLogin(String provider) {
-    BonoboSoftToast.show(context,
-        message: 'Connexion $provider — intégration SDK à compléter.',
-        icon: Icons.info_outline_rounded,
-        iconColor: AppColors.primaryGreenStart);
+    if (provider == 'Google') {
+      ref.read(authProvider.notifier).signInWithGoogle();
+    }
   }
 
   void _continueAsGuest() => context.go('/');
@@ -207,19 +206,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
             // ── Contenu principal ──────────────────────────────────────────
             SafeArea(
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  const Spacer(),
-                  FadeTransition(
-                    opacity: _cardFade,
-                    child: SlideTransition(
-                      position: _cardSlide,
-                      child: _buildCard(),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          children: [
+                            _buildHeader(),
+                            const Spacer(),
+                            FadeTransition(
+                              opacity: _cardFade,
+                              child: SlideTransition(
+                                position: _cardSlide,
+                                child: _buildCard(),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                  );
+                },
               ),
             ),
 
@@ -334,15 +344,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           label: 'Continuer avec Google',
           iconWidget: const _GoogleIcon(),
           onTap: () => _onSocialLogin('Google'),
-        ),
-        const SizedBox(height: 10),
-
-        // Facebook
-        _SocialBtn(
-          label: 'Continuer avec Facebook',
-          iconWidget: const Icon(Icons.facebook_rounded,
-              color: Color(0xFF1877F2), size: 22),
-          onTap: () => _onSocialLogin('Facebook'),
         ),
 
         const SizedBox(height: 20),
@@ -491,9 +492,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(_otpLength, (i) {
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: SizedBox(
-                width: 44,
+                width: 40,
                 height: 52,
                 child: TextField(
                   controller: _otpControllers[i],
@@ -543,11 +544,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         ),
         const SizedBox(height: 12),
         TextButton(
-          onPressed: () {
-            for (final c in _otpControllers) {
-              c.clear();
+          onPressed: () async {
+            // Animation de chargement gérée par le provider
+            await _onSendOtp();
+            if (mounted) {
+              BonoboSoftToast.show(context,
+                  message: 'Nouveau code envoyé !',
+                  icon: Icons.mark_email_read_rounded,
+                  iconColor: AppColors.primaryGreenStart);
             }
-            _goToStep('email');
           },
           child: Text(
             'Renvoyer le code',

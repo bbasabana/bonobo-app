@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../local_storage.dart';
 import '../../features/account/data/auth_service.dart';
 
@@ -56,6 +57,9 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
 
   AuthNotifier(this._authService)
       : super(AuthState(
@@ -103,12 +107,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Connexion via Google / Facebook.
-  Future<void> socialLogin(String provider, String idToken,
-      {String role = 'user'}) async {
+  /// Connexion via Google.
+  Future<void> signInWithGoogle({String role = 'user'}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final res = await _authService.socialLogin(provider, idToken, role: role);
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        throw 'Impossible de récupérer le jeton Google ID.';
+      }
+
+      final res = await _authService.socialLogin(
+        'google',
+        idToken,
+        email: googleUser.email,
+        displayName: googleUser.displayName,
+        avatarUrl: googleUser.photoUrl,
+        role: role,
+      );
+      
       await _persist(res);
       state = AuthState(
         isAuthenticated: true,
@@ -125,15 +149,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Login rapide (mock / tests). À remplacer par le flux réel.
-  void loginMock(String token, String role) {
-    LocalStorage.saveToken(token);
-    LocalStorage.saveUserRole(role);
-    state = AuthState(isAuthenticated: true, token: token, role: role);
-  }
-
   void logout() {
     LocalStorage.logout();
+    _googleSignIn.signOut().catchError((_) => null);
     state = const AuthState(isAuthenticated: false);
   }
 

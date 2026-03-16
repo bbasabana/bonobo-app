@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../../core/constants/app_config.dart';
 import '../domain/sports_match.dart';
 

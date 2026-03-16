@@ -12,7 +12,20 @@
           "package_name": "com.meyllos.bonobo"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "685960865310-vma5a6h6v15j2hvqdi9s594mpgi698qs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.meyllos.bonobo",
+            "certificate_hash": "ff95cb5b2ca7b49320f228ff24f5366bf5b16811"
+          }
+        },
+        {
+          "client_id": "685960865310-j14mll16q60goo5ktefkogtkhfv2g47q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDM8n8kpLjEtM4voyb9s1DLhiL0DKzW_KE"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "685960865310-j14mll16q60goo5ktefkogtkhfv2g47q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

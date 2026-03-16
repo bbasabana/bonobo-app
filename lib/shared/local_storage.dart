@@ -13,6 +13,7 @@ class LocalStorage {
   static late Box<String> _prefsBox;
   static late Box<String> _translationBox;
   static late Box<String> _reactionsBox;
+  static late Box<String> _categoriesBox;
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -21,6 +22,17 @@ class LocalStorage {
     _prefsBox = await Hive.openBox<String>(AppConstants.hivePrefsBox);
     _translationBox = await Hive.openBox<String>(AppConstants.hiveTranslationBox);
     _reactionsBox = await Hive.openBox<String>('reactionsBox');
+    _categoriesBox = await Hive.openBox<String>('categoriesBox');
+  }
+
+  // --- Sync Notifications ---
+
+  static String? getLastNotificationId() {
+    return _prefsBox.get('last_notification_id');
+  }
+
+  static Future<void> saveLastNotificationId(String id) async {
+    await _prefsBox.put('last_notification_id', id);
   }
 
   // --- News Articles ---
@@ -75,11 +87,52 @@ class LocalStorage {
     }
   }
 
-  static bool isMediaSourcesExpired() {
-    return _isExpired('${AppConstants.keyMediaSourcesAll}_ts', const Duration(days: 1));
+  static DateTime? getMediaSourcesTimestamp() {
+    final tsStr = _newsBox.get('${AppConstants.keyMediaSourcesAll}_ts');
+    return tsStr != null ? DateTime.tryParse(tsStr) : null;
   }
 
-  // --- Jobs ---
+  static bool isMediaSourcesExpired() {
+    return _isExpired('${AppConstants.keyMediaSourcesAll}_ts', const Duration(hours: 1));
+  }
+
+  static Future<void> markMediaSourcesExpired() async {
+    await _newsBox.delete('${AppConstants.keyMediaSourcesAll}_ts');
+  }
+
+  // --- Categories ---
+
+  static Future<void> saveCategories(List<dynamic> list) async {
+    await _categoriesBox.put('all_categories', jsonEncode(list));
+    await _categoriesBox.put('all_categories_ts', DateTime.now().toIso8601String());
+  }
+
+  static List<dynamic> getCategories() {
+    final json = _categoriesBox.get('all_categories');
+    if (json == null) return [];
+    try {
+      return jsonDecode(json) as List;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static DateTime? getCategoriesTimestamp() {
+    final tsStr = _categoriesBox.get('all_categories_ts');
+    return tsStr != null ? DateTime.tryParse(tsStr) : null;
+  }
+
+  static bool isCategoriesExpired() {
+    final tsStr = _categoriesBox.get('all_categories_ts');
+    if (tsStr == null) return true;
+    final ts = DateTime.tryParse(tsStr);
+    if (ts == null) return true;
+    return DateTime.now().difference(ts) > const Duration(hours: 1);
+  }
+
+  static Future<void> markCategoriesExpired() async {
+    await _categoriesBox.delete('all_categories_ts');
+  }
 
   static Future<void> saveJobs(List<JobOffer> jobs) async {
     final json = jsonEncode(jobs.map((j) => j.toJson()).toList());

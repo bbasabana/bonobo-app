@@ -56,7 +56,7 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
     super.dispose();
   }
 
-  void _onSendOtp() {
+  Future<void> _onSendOtp() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
       BonoboSoftToast.show(context,
@@ -65,14 +65,23 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
           iconColor: AppColors.error);
       return;
     }
-    setState(() {
-      _email = email;
-      _showOtpStep = true;
-    });
-    // TODO: POST /api/v1/auth/send-otp { "email": email, "role": "journalist" }
+    try {
+      await ref.read(authProvider.notifier).sendOtp(email, role: 'journalist');
+      setState(() {
+        _email = email;
+        _showOtpStep = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        BonoboSoftToast.show(context,
+            message: e.toString(),
+            icon: Icons.error_outline_rounded,
+            iconColor: AppColors.error);
+      }
+    }
   }
 
-  void _onVerifyOtp() {
+  Future<void> _onVerifyOtp() async {
     final code = _otpControllers.map((c) => c.text).join();
     if (code.length != _otpLength) {
       BonoboSoftToast.show(context,
@@ -81,21 +90,41 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
           iconColor: AppColors.error);
       return;
     }
-    // TODO: POST /api/v1/auth/verify-otp
-    ref.read(authProvider.notifier).loginMock('mock_token_jr_${DateTime.now().millisecondsSinceEpoch}', 'journalist');
+    try {
+      await ref.read(authProvider.notifier).verifyOtp(_email, code);
 
-    BonoboSoftToast.show(context,
-        message: 'Connexion réussie ! Bienvenue, journaliste.',
-        icon: Icons.check_circle_rounded,
-        iconColor: AppColors.primaryGreenStart);
-    if (mounted) Navigator.of(context).maybePop();
+      if (mounted) {
+        BonoboSoftToast.show(context,
+            message: 'Connexion réussie ! Bienvenue, journaliste.',
+            icon: Icons.check_circle_rounded,
+            iconColor: AppColors.primaryGreenStart);
+        Navigator.of(context).maybePop();
+      }
+    } catch (e) {
+      if (mounted) {
+        BonoboSoftToast.show(context,
+            message: e.toString(),
+            icon: Icons.error_outline_rounded,
+            iconColor: AppColors.error);
+      }
+    }
   }
 
   void _onSocialLogin(String provider) {
-    BonoboSoftToast.show(context,
-        message: 'Connexion $provider à venir (Backend API)',
-        icon: Icons.info_outline_rounded,
-        iconColor: AppColors.primaryGreenStart);
+    if (provider == 'Google') {
+      ref.read(authProvider.notifier).signInWithGoogle(role: 'journalist')
+        .then((_) {
+          if (mounted) Navigator.of(context).maybePop();
+        })
+        .catchError((e) {
+          if (mounted) {
+            BonoboSoftToast.show(context,
+                message: e.toString(),
+                icon: Icons.error_outline_rounded,
+                iconColor: AppColors.error);
+          }
+        });
+    }
   }
 
   void _showLearnMore() {
@@ -459,8 +488,6 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
             Row(
               children: [
                 Expanded(child: _SocialBtn(label: 'Google', icon: Icons.g_mobiledata_rounded, onTap: () => _onSocialLogin('Google'))),
-                const SizedBox(width: 12),
-                Expanded(child: _SocialBtn(label: 'Facebook', icon: Icons.facebook_rounded, onTap: () => _onSocialLogin('Facebook'))),
               ],
             ),
           ] else ...[

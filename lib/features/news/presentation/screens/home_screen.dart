@@ -17,15 +17,16 @@ import '../../../../shared/widgets/offline_banner.dart';
 import '../../../media/presentation/devenir_media_source_modal.dart';
 import '../../domain/feed_news.dart';
 import '../../providers/news_providers.dart';
+import '../../providers/sync_provider.dart';
+import '../../../categories/domain/category.dart' as domain;
+import '../../../categories/providers/category_providers.dart';
 import '../widgets/article_card.dart';
 import '../widgets/hero_slider_widget.dart';
 
 const double _kHeroHeight = 360.0;
 
-// ─────────────────────────────────────────────
-//  Catégories (icônes Material, pas d’emojis)
-// ─────────────────────────────────────────────
-const _categories = [
+// ── Catégories statiques de secours (utilisées si le fetch échoue ou pendant le premier chargement)
+const _fallbackCategories = [
   (null, Icons.public_rounded, 'Tout'),
   ('Politique', Icons.account_balance_rounded, 'Politique'),
   ('Économie', Icons.trending_up_rounded, 'Économie'),
@@ -44,29 +45,38 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   bool _appBarSolid = false;
   String? _selectedCategory;
   bool _hasShownSavedToast = false;
   bool _justReconnected = false;
 
-  /// Dernières données connues : TOUJOURS affichées même pendant loading/error.
+  // Cache pour éviter les sauts d'UI lors du refresh
   List<FeedNews> _lastArticles = [];
   List<FeedNews> _lastHero = [];
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(() {
-      final solid = _scrollController.offset > 20;
-      if (solid != _appBarSolid) setState(() => _appBarSolid = solid);
+    _scrollController.addListener(_onScroll);
+    
+    // Initialiser le service de synchronisation temps-réel
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(syncServiceProvider).start();
     });
+  }
+
+  void _onScroll() {
+    final solid = _scrollController.offset > 20;
+    if (solid != _appBarSolid) setState(() => _appBarSolid = solid);
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    // Arrêter le service de synchronisation
+    ref.read(syncServiceProvider).stop();
     super.dispose();
   }
 
@@ -424,7 +434,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SliverToBoxAdapter(
             child: _CategoryPills(
               selected: _selectedCategory,
-              articles: articles,
               onSelect: (cat) => setState(() => _selectedCategory = cat),
             ),
           ),
@@ -998,14 +1007,29 @@ class _MediaSourceSection extends ConsumerWidget {
                   // Badges scrollables (toujours style sombre sur ce fond)
                   SizedBox(
                     height: 52,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: EdgeInsets.zero,
-                      itemCount: sources.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (ctx, i) => _MediaSourceBadge(
-                        source: sources[i],
-                        isDark: false,
+                    child: asyncSources.when(
+                      data: (sources) => ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: EdgeInsets.zero,
+                        itemCount: sources.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (ctx, i) => _MediaSourceBadge(
+                          source: sources[i],
+                          isDark: false,
+                        ),
+                      ),
+                      loading: () => ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: EdgeInsets.zero,
+                        itemCount: 5,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (ctx, i) => _MediaSourceShimmer(),
+                      ),
+                      error: (_, __) => const Center(
+                        child: Text(
+                          'Impossible de charger les sources',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
                       ),
                     ),
                   ),
@@ -1158,102 +1182,195 @@ class _MediaSourceBadge extends StatelessWidget {
 // ─────────────────────────────────────────────
 //  Pills catégories — dynamiques depuis les articles
 // ─────────────────────────────────────────────
-class _CategoryPills extends StatelessWidget {
+class _CategoryPills extends ConsumerWidget {
   final String? selected;
-  final List<FeedNews> articles;
   final ValueChanged<String?> onSelect;
 
   const _CategoryPills({
     required this.selected,
-    required this.articles,
     required this.onSelect,
   });
 
-  /// Construit la liste de catégories dynamiquement depuis les articles
-  /// en conservant l'ordre de la liste statique et en filtrant les vides.
-  List<(String?, IconData, String)> _buildCategories() {
-    if (articles.isEmpty) return _categories;
-
-    // Catégories présentes dans les articles chargés
-    final present = <String>{};
-    for (final a in articles) {
-      if (a.category == null) continue;
-      for (final c in a.category!.split(',')) {
-        final t = c.trim();
-        if (t.isNotEmpty) present.add(t);
-      }
-    }
-
-    // Garder uniquement les catégories statiques qui ont des articles
-    final dynamic = _categories.where((cat) =>
-      cat.$1 == null || // "Tout" toujours présent
-      present.any((p) => p.toLowerCase() == cat.$1!.toLowerCase())
-    ).toList();
-
-    return dynamic.isEmpty ? _categories : dynamic;
+  IconData _getIconForCategory(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('politique')) return Icons.account_balance_rounded;
+    if (lower.contains('écon') || lower.contains('finance')) return Icons.trending_up_rounded;
+    if (lower.contains('sport')) return Icons.sports_soccer_rounded;
+    if (lower.contains('société') || lower.contains('culture')) return Icons.groups_rounded;
+    if (lower.contains('inter') || lower.contains('monde')) return Icons.language_rounded;
+    if (lower.contains('sécurité') || lower.contains('justice')) return Icons.shield_rounded;
+    if (lower.contains('santé')) return Icons.medical_services_rounded;
+    if (lower.contains('tech')) return Icons.biotech_rounded;
+    if (lower.contains('éduc')) return Icons.school_rounded;
+    return Icons.label_important_outline_rounded;
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cats = _buildCategories();
+    final asyncCategories = ref.watch(categoriesProvider);
 
+    return asyncCategories.when(
+      data: (categories) {
+        final list = [
+          (null, Icons.public_rounded, 'Tout'),
+          ...categories.map((c) => (c.name, _getIconForCategory(c.name), c.name)),
+        ];
+
+        return SizedBox(
+          height: 44,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            itemCount: list.length,
+            itemBuilder: (context, i) {
+              final cat = list[i];
+              final isSelected = cat.$1 == selected;
+              return GestureDetector(
+                onTap: () => onSelect(cat.$1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: isSelected
+                        ? const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF01732C), Color(0xFF025A22), Color(0xFF036027)],
+                            stops: [0.0, 0.55, 1.0],
+                          )
+                        : null,
+                    color: isSelected ? null : (isDark ? const Color(0xFF1E2535) : Colors.white),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.primaryGreen
+                          : isDark ? Colors.white12 : Colors.grey.shade200,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        cat.$2,
+                        size: 16,
+                        color: isSelected ? Colors.white : (isDark ? Colors.white70 : AppColors.textSecondary),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        cat.$3,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          color: isSelected
+                              ? Colors.white
+                              : isDark ? Colors.white70 : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => _CategoryShimmer(),
+      error: (_, __) => _StaticCategoryPills(selected: selected, onSelect: onSelect),
+    );
+  }
+}
+
+class _CategoryShimmer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     return SizedBox(
       height: 44,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        itemCount: cats.length,
+        itemCount: 5,
+        itemBuilder: (context, i) => Container(
+          width: 100,
+          margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(22),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StaticCategoryPills extends StatelessWidget {
+  final String? selected;
+  final ValueChanged<String?> onSelect;
+
+  const _StaticCategoryPills({required this.selected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SizedBox(
+      height: 44,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        itemCount: _fallbackCategories.length,
         itemBuilder: (context, i) {
-          final cat = cats[i];
+          final cat = _fallbackCategories[i];
           final isSelected = cat.$1 == selected;
           return GestureDetector(
             onTap: () => onSelect(cat.$1),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+            child: Container(
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                gradient: isSelected
-                    ? const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF01732C), Color(0xFF025A22), Color(0xFF036027)],
-                        stops: [0.0, 0.55, 1.0],
-                      )
-                    : null,
-                color: isSelected ? null : (isDark ? const Color(0xFF1E2535) : Colors.white),
+                color: isSelected ? AppColors.primaryGreen : (isDark ? const Color(0xFF1E2535) : Colors.white),
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: isSelected
-                      ? AppColors.primaryGreen
-                      : isDark ? Colors.white12 : Colors.grey.shade200,
-                ),
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    cat.$2,
-                    size: 16,
-                    color: isSelected ? Colors.white : (isDark ? Colors.white70 : AppColors.textSecondary),
-                  ),
+                  Icon(cat.$2, size: 16, color: isSelected ? Colors.white : Colors.white70),
                   const SizedBox(width: 6),
-                  Text(
-                    cat.$3,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                      color: isSelected
-                          ? Colors.white
-                          : isDark ? Colors.white70 : AppColors.textSecondary,
-                    ),
-                  ),
+                  Text(cat.$3, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontSize: 12)),
                 ],
               ),
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _MediaSourceShimmer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 140,
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 10),
+          Container(width: 24, height: 24, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(6))),
+          const SizedBox(width: 8),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(width: 60, height: 8, color: Colors.white12),
+              const SizedBox(height: 4),
+              Container(width: 40, height: 6, color: Colors.white12),
+            ],
+          ),
+        ],
       ),
     );
   }
