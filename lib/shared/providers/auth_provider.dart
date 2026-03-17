@@ -149,9 +149,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  void logout() {
-    LocalStorage.logout();
-    _googleSignIn.signOut().catchError((_) => null);
+  Future<void> logout() async {
+    await LocalStorage.logout();
+    await _googleSignIn.signOut().catchError((_) => null);
     state = const AuthState(isAuthenticated: false);
   }
 

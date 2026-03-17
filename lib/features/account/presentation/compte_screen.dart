@@ -7,6 +7,12 @@ import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/bonobo_app_bar.dart';
 import '../../../shared/widgets/bonobo_soft_toast.dart';
 import '../../../shared/providers/auth_provider.dart';
+import 'compte_screen.dart';
+
+import 'widgets/journalist_modals.dart';
+import '../../media/presentation/devenir_media_source_modal.dart';
+import '../../news/presentation/screens/saved_articles_screen.dart';
+import 'notifications_screen.dart';
 
 /// Écran Compte : profil connecté ou formulaire d'inscription.
 class CompteScreen extends ConsumerStatefulWidget {
@@ -24,6 +30,8 @@ class _CompteScreenState extends ConsumerState<CompteScreen> {
   final _otpControllers =
       List.generate(_otpLength, (_) => TextEditingController());
   final _otpFocusNodes = List.generate(_otpLength, (_) => FocusNode());
+  List<dynamic> _ownedMedia = [];
+  bool _loadingMedia = false;
 
   @override
   void dispose() {
@@ -35,6 +43,35 @@ class _CompteScreenState extends ConsumerState<CompteScreen> {
       f.dispose();
     }
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkJournalistData();
+    });
+  }
+
+  Future<void> _checkJournalistData() async {
+    final auth = ref.read(authProvider);
+    if (auth.isAuthenticated && auth.role == 'journalist') {
+      _fetchOwnedMedia();
+    }
+  }
+
+  Future<void> _fetchOwnedMedia() async {
+    setState(() => _loadingMedia = true);
+    final service = JournalistApplicationService(token: ref.read(authProvider).token);
+    final data = await service.getJournalistDashboard();
+    if (mounted && data != null) {
+      setState(() {
+        _ownedMedia = data['sources'] ?? [];
+        _loadingMedia = false;
+      });
+    } else if (mounted) {
+      setState(() => _loadingMedia = false);
+    }
   }
 
   Future<void> _onSendOtp() async {
@@ -95,6 +132,40 @@ class _CompteScreenState extends ConsumerState<CompteScreen> {
         message: 'Connexion $provider — intégration SDK à compléter.',
         icon: Icons.info_outline_rounded,
         iconColor: AppColors.primaryGreenStart);
+  }
+
+  Future<void> _onLogout() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E2035) : Colors.white,
+        title: Text('Déconnexion',
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : AppColors.textPrimary)),
+        content: Text('Voulez-vous vraiment vous déconnecter de votre compte ?',
+            style: GoogleFonts.inter(
+                color: isDark ? Colors.white70 : AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Annuler',
+                style: GoogleFonts.inter(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Se déconnecter',
+                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await ref.read(authProvider.notifier).logout();
+      if (mounted) context.pop();
+    }
   }
 
   @override
@@ -308,7 +379,7 @@ class _CompteScreenState extends ConsumerState<CompteScreen> {
                   icon: Icons.fingerprint_rounded,
                   label: 'ID',
                   value: auth.userId != null
-                      ? '${auth.userId!.substring(0, 8)}…'
+                      ? 'ID-${auth.userId!.substring(0, 8).toUpperCase()}'
                       : '—',
                   isDark: isDark),
             ],
@@ -324,6 +395,61 @@ class _CompteScreenState extends ConsumerState<CompteScreen> {
           ),
           child: Column(
             children: [
+              if (auth.role == 'user') ...[
+                ListTile(
+                  leading: const Icon(Icons.edit_note_rounded,
+                      color: AppColors.primaryGreen),
+                  title: Text('Postuler comme journaliste',
+                      style: GoogleFonts.inter(
+                          color: textPrimary, fontWeight: FontWeight.w600)),
+                  subtitle: Text('Devenez contributeur sur Bonobo',
+                      style: GoogleFonts.inter(
+                          color: textSecondary, fontSize: 11)),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded,
+                      size: 14),
+                  onTap: () => _showJournalistApplication(),
+                ),
+                const Divider(height: 1, indent: 16),
+                ListTile(
+                  leading: const Icon(Icons.add_business_rounded,
+                      color: AppColors.primaryGreen),
+                  title: Text('Soumettre un média',
+                      style: GoogleFonts.inter(
+                          color: textPrimary, fontWeight: FontWeight.w600)),
+                  subtitle: Text('Ajoutez un flux RSS sur la plateforme',
+                      style: GoogleFonts.inter(
+                          color: textSecondary, fontSize: 11)),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded,
+                      size: 14),
+                  onTap: () => DevenirMediaSourceModal.show(context),
+                ),
+                const Divider(height: 1, indent: 16),
+              ],
+              
+              if (auth.role == 'journalist') ...[
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('MES MÉDIAS & CERTIFICATION',
+                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primaryGreen, letterSpacing: 1.0)),
+                      if (_loadingMedia)
+                        const SizedBox(height: 12, width: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen)),
+                    ],
+                  ),
+                ),
+                if (_ownedMedia.isEmpty && !_loadingMedia)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Text('Aucun média associé à votre compte.', style: GoogleFonts.inter(fontSize: 12, color: textSecondary)),
+                  ),
+                ..._ownedMedia.map((m) => _buildMediaCertificationTile(m, isDark, textPrimary, textSecondary)),
+                const SizedBox(height: 16),
+                const Divider(height: 1, indent: 16),
+              ],
+
               ListTile(
                 leading: const Icon(Icons.bookmark_outline_rounded,
                     color: AppColors.primaryGreen),
@@ -332,6 +458,7 @@ class _CompteScreenState extends ConsumerState<CompteScreen> {
                         color: textPrimary, fontWeight: FontWeight.w600)),
                 trailing: const Icon(Icons.arrow_forward_ios_rounded,
                     size: 14),
+                onTap: () => context.push('/saved-articles'),
               ),
               const Divider(height: 1, indent: 16),
               ListTile(
@@ -342,6 +469,7 @@ class _CompteScreenState extends ConsumerState<CompteScreen> {
                         color: textPrimary, fontWeight: FontWeight.w600)),
                 trailing: const Icon(Icons.arrow_forward_ios_rounded,
                     size: 14),
+                onTap: () => context.push('/notifications'),
               ),
             ],
           ),
@@ -352,10 +480,7 @@ class _CompteScreenState extends ConsumerState<CompteScreen> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () {
-              ref.read(authProvider.notifier).logout();
-              if (mounted) context.pop();
-            },
+            onPressed: _onLogout,
             icon: const Icon(Icons.logout_rounded, color: AppColors.error),
             label: Text('Se déconnecter',
                 style: GoogleFonts.inter(
@@ -528,6 +653,85 @@ class _CompteScreenState extends ConsumerState<CompteScreen> {
       ],
     );
   }
+
+  void _showJournalistApplication() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const JournalistApplicationModal(),
+    );
+  }
+
+  void _showMediaSubmission(String? userId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => MediaSubmissionModal(userId: userId),
+    );
+  }
+
+  Widget _buildMediaCertificationTile(Map<String, dynamic> m, bool isDark, Color textPrimary, Color textSecondary) {
+    final cert = m['certification'] ?? 'none';
+    final status = m['certificationRequestStatus'] ?? 'none';
+    
+    IconData icon = Icons.verified_user_outlined;
+    Color color = AppColors.primaryGreen;
+    String label = 'Non certifié';
+
+    if (cert == 'blue') {
+      icon = Icons.verified_rounded;
+      color = Colors.blue;
+      label = 'Officiel';
+    } else if (cert == 'green') {
+      icon = Icons.verified_user_rounded;
+      color = Colors.emerald;
+      label = 'Partenaire';
+    } else if (cert == 'yellow') {
+      icon = Icons.report_problem_rounded;
+      color = Colors.amber;
+      label = 'Observateur';
+    } else if (cert == 'red') {
+      icon = Icons.warning_rounded;
+      color = Colors.red;
+      label = 'Urgent';
+    }
+
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      title: Text(m['name'] ?? 'Média sans nom', style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: textPrimary, fontSize: 13)),
+      subtitle: Text(
+        status == 'pending' ? 'Demande en attente...' : label,
+        style: GoogleFonts.inter(fontSize: 11, color: status == 'pending' ? Colors.amber : textSecondary),
+      ),
+      trailing: (cert == 'none' && status != 'pending') 
+        ? TextButton(
+            onPressed: () => _showCertificationRequest(m),
+            child: const Text('Certifier', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          )
+        : null,
+    );
+  }
+
+  void _showCertificationRequest(Map<String, dynamic> media) async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => MediaCertificationRequestModal(media: media),
+    );
+    if (result == true) {
+      _fetchOwnedMedia();
+    }
+  }
 }
 
 // ── Sub-widgets ───────────────────────────────────────────────────────────────
@@ -613,3 +817,4 @@ class _SocialButton extends StatelessWidget {
     );
   }
 }
+

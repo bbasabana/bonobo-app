@@ -32,8 +32,8 @@ class BonoboArticleImage extends StatelessWidget {
     return highQuality ? imageUrlHighRes(url, preferredWidth: 1200) : url;
   }
 
-  bool get _hasFiniteHeight => height.isFinite && height > 0;
-  bool get _hasFiniteWidth => width.isFinite && width > 0;
+  bool get _hasFiniteHeight => height > 0;
+  bool get _hasFiniteWidth => width > 0;
 
   Widget _withOptionalSize(Widget child) {
     // Important: `width: double.infinity` est valide pour Flutter, mais n'est pas

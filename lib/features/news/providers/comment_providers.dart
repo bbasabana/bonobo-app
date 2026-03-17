@@ -19,10 +19,22 @@ class CommentNotifier extends StateNotifier<AsyncValue<void>> {
 
   CommentNotifier(this._service, this._ref) : super(const AsyncValue.data(null));
 
-  Future<bool> postComment(String articleId, String content) async {
+  Future<bool> postComment(
+    String articleId,
+    String content, {
+    String? city,
+    String? region,
+    String? countryCode,
+  }) async {
     state = const AsyncValue.loading();
     try {
-      final success = await _service.postComment(articleId, content);
+      final success = await _service.postComment(
+        articleId: articleId,
+        content: content,
+        city: city,
+        region: region,
+        countryCode: countryCode,
+      );
       if (success) {
         state = const AsyncValue.data(null);
         _ref.invalidate(commentsProvider(articleId));

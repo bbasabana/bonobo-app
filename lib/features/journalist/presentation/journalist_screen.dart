@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../account/presentation/widgets/journalist_modals.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/bonobo_soft_toast.dart';
+import '../../account/presentation/widgets/journalist_modals.dart';
 
 /// Espace Journaliste : fond immersif avec bonobo_load_bg.jpg,
 /// texte valorisant les journalistes indépendants, OTP + social.
@@ -386,7 +388,26 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
               Expanded(
                 flex: 2,
                 child: FilledButton(
-                  onPressed: () => setState(() => _showAuthForm = true),
+                  onPressed: () {
+                    final auth = ref.read(authProvider);
+                    if (auth.isAuthenticated) {
+                      if (auth.role == 'journalist') {
+                        BonoboSoftToast.show(context,
+                            message: 'Vous êtes déjà journaliste.',
+                            icon: Icons.info_outline_rounded,
+                            iconColor: AppColors.primaryGreenStart);
+                      } else {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => const JournalistApplicationModal(),
+                        );
+                      }
+                    } else {
+                      setState(() => _showAuthForm = true);
+                    }
+                  },
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
@@ -421,15 +442,18 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
           Center(
             child: GestureDetector(
               onTap: () => setState(() => _showAuthForm = true),
-              child: RichText(
-                text: const TextSpan(
-                  text: 'Vous avez déjà un compte ? ',
-                  style: TextStyle(color: Colors.white54, fontSize: 13),
+            child: RichText(
+                text: TextSpan(
+                  text: ref.watch(authProvider).isAuthenticated 
+                      ? 'Compte connecté' 
+                      : 'Vous avez déjà un compte ? ',
+                  style: const TextStyle(color: Colors.white54, fontSize: 13),
                   children: [
-                    TextSpan(
-                      text: 'Se connecter',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
-                    ),
+                    if (!ref.watch(authProvider).isAuthenticated)
+                      const TextSpan(
+                        text: 'Se connecter',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                      ),
                   ],
                 ),
               ),

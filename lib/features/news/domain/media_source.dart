@@ -13,6 +13,8 @@ class MediaSource extends Equatable {
   final String logoUrl;
   final Color color;
   final String? cmsType;
+  final String certification; // none | blue | green | yellow | red
+  final String certificationRequestStatus; // none | pending | approved | rejected
 
   const MediaSource({
     required this.id,
@@ -24,6 +26,8 @@ class MediaSource extends Equatable {
     required this.logoUrl,
     this.color = const Color(0xFF01732C),
     this.cmsType,
+    this.certification = 'none',
+    this.certificationRequestStatus = 'none',
   });
 
   factory MediaSource.fromJson(Map<String, dynamic> json) {
@@ -43,6 +47,8 @@ class MediaSource extends Equatable {
       logoUrl: json['logoUrl'] as String? ?? '',
       cmsType: json['cmsType'] as String?,
       color: json['color'] != null ? _parseColor(json['color'] as String) : const Color(0xFF01732C),
+      certification: json['certification'] as String? ?? 'none',
+      certificationRequestStatus: json['certificationRequestStatus'] as String? ?? 'none',
     );
   }
 
@@ -67,6 +73,8 @@ class MediaSource extends Equatable {
     String? logoUrl,
     Color? color,
     String? cmsType,
+    String? certification,
+    String? certificationRequestStatus,
   }) {
     return MediaSource(
       id: id ?? this.id,
@@ -78,6 +86,8 @@ class MediaSource extends Equatable {
       logoUrl: logoUrl ?? this.logoUrl,
       color: color ?? this.color,
       cmsType: cmsType ?? this.cmsType,
+      certification: certification ?? this.certification,
+      certificationRequestStatus: certificationRequestStatus ?? this.certificationRequestStatus,
     );
   }
 
@@ -113,4 +123,24 @@ class MediaSource extends Equatable {
 
   @override
   List<Object?> get props => [id];
+
+  IconData? get certificationIcon {
+    switch (certification) {
+      case 'blue': return Icons.verified_rounded;
+      case 'green': return Icons.verified_user_rounded;
+      case 'yellow': return Icons.report_problem_rounded;
+      case 'red': return Icons.warning_rounded;
+      default: return null;
+    }
+  }
+
+  Color get certificationColor {
+    switch (certification) {
+      case 'blue': return Colors.blue;
+      case 'green': return Colors.emerald;
+      case 'yellow': return Colors.amber;
+      case 'red': return Colors.red;
+      default: return Colors.transparent;
+    }
+  }
 }

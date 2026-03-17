@@ -84,31 +84,52 @@ class _MediaChip extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E2035), AppColors.backgroundDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.primaryGreen.withValues(alpha: 0.3),
-                  width: 1.5,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  source.name.substring(0, source.name.length.clamp(0, 2)).toUpperCase(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppColors.primaryGreenStart,
+            Stack(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1E2035), AppColors.backgroundDark],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      source.name.substring(0, source.name.length.clamp(0, 2)).toUpperCase(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.primaryGreenStart,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                if (source.certificationIcon != null)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        source.certificationIcon,
+                        color: source.certificationColor,
+                        size: 10,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             SizedBox(

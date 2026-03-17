@@ -46,11 +46,13 @@ class SportsData {
   final List<SportsMatch> liveMatches;
   final List<SportsMatch> upcomingMatches;
   final List<LeagueInfo> leagues;
+  final List<SportsArticle> news;
 
   SportsData({
     required this.liveMatches,
     required this.upcomingMatches,
     required this.leagues,
+    this.news = const [],
   });
 
   factory SportsData.fromJson(Map<String, dynamic> json) {
@@ -64,6 +66,41 @@ class SportsData {
       leagues: (json['leagues'] as List? ?? [])
           .map((e) => LeagueInfo.fromJson(e))
           .toList(),
+      news: (json['news'] as List? ?? [])
+          .map((e) => SportsArticle.fromJson(e))
+          .toList(),
+    );
+  }
+}
+
+class SportsArticle {
+  final String id;
+  final String title;
+  final String url;
+  final String? imageUrl;
+  final String? publishedAt;
+  final String sourceName;
+  final String category;
+
+  SportsArticle({
+    required this.id,
+    required this.title,
+    required this.url,
+    this.imageUrl,
+    this.publishedAt,
+    required this.sourceName,
+    required this.category,
+  });
+
+  factory SportsArticle.fromJson(Map<String, dynamic> json) {
+    return SportsArticle(
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      url: json['url'] as String? ?? '',
+      imageUrl: json['imageUrl'] as String?,
+      publishedAt: json['publishedAt'] as String?,
+      sourceName: json['sourceName'] as String? ?? 'Sport',
+      category: json['category'] as String? ?? 'Sport',
     );
   }
 }

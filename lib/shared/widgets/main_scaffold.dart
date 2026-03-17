@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../shared/widgets/bonobo_soft_toast.dart';
 import '../providers/marketing_provider.dart';
+import '../providers/auth_provider.dart';
 import 'marketing_promo_modal.dart';
 
 class MainScaffold extends ConsumerStatefulWidget {
@@ -26,6 +28,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
     ('/sports', Icons.sports_soccer_rounded, 'Sport'),
     ('/jobs', Icons.work_rounded, 'Emplois'),
     ('/journalist', Icons.edit_note_rounded, 'Journaliste'),
+    ('/about', Icons.info_rounded, 'Bonobo'),
   ];
 
   @override
@@ -60,6 +63,17 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
   }
 
   void _navigate(String path) {
+    if (path == '/journalist') {
+      final auth = ref.read(authProvider);
+      if (!auth.isAuthenticated) {
+        context.go('/compte');
+        BonoboSoftToast.show(context,
+            message: 'Connectez-vous pour accéder à l\'espace journaliste.',
+            icon: Icons.info_outline_rounded,
+            iconColor: AppColors.primaryGreenStart);
+        return;
+      }
+    }
     context.go(path);
     if (_expanded) {
       setState(() => _expanded = false);

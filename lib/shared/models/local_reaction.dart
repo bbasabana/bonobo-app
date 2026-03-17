@@ -66,4 +66,18 @@ class ArticleReaction {
     isDisliked: json['isDisliked'] as bool? ?? false,
     totalLikes: (json['totalLikes'] as num?)?.toInt() ?? 0,
   );
+
+  ArticleReaction copyWith({
+    String? articleId,
+    bool? isLiked,
+    bool? isDisliked,
+    int? totalLikes,
+  }) {
+    return ArticleReaction(
+      articleId: articleId ?? this.articleId,
+      isLiked: isLiked ?? this.isLiked,
+      isDisliked: isDisliked ?? this.isDisliked,
+      totalLikes: totalLikes ?? this.totalLikes,
+    );
+  }
 }

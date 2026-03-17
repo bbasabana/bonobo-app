@@ -1,6 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
+import '../features/news/providers/news_providers.dart';
+import '../features/news/domain/media_source.dart';
 
 import '../core/constants/app_colors.dart';
 
@@ -10,22 +14,23 @@ import '../core/constants/app_colors.dart';
 ///
 /// Le splash natif Android utilise drawable/background.png (fond sombre uniforme).
 /// Il n'y a aucun écran blanc intermédiaire.
-class BonoboSplashScreen extends StatefulWidget {
+class BonoboSplashScreen extends ConsumerStatefulWidget {
   final VoidCallback onComplete;
 
   const BonoboSplashScreen({super.key, required this.onComplete});
 
   @override
-  State<BonoboSplashScreen> createState() => _BonoboSplashScreenState();
+  ConsumerState<BonoboSplashScreen> createState() => _BonoboSplashScreenState();
 }
 
-class _BonoboSplashScreenState extends State<BonoboSplashScreen>
+class _BonoboSplashScreenState extends ConsumerState<BonoboSplashScreen>
     with TickerProviderStateMixin {
   // ── Animation controllers ──────────────────────────────────────────────────
   late AnimationController _entryController;   // logo entry
   late AnimationController _pulseController;   // halo pulse loop
   late AnimationController _barController;     // progress bar
   late AnimationController _exitController;    // fade out
+  late AnimationController _mediaController;   // scrolling media
 
   // ── Animations ────────────────────────────────────────────────────────────
   late Animation<double> _logoScale;
@@ -93,6 +98,12 @@ class _BonoboSplashScreenState extends State<BonoboSplashScreen>
       CurvedAnimation(parent: _exitController, curve: Curves.easeOut),
     );
 
+    // ── Media Scrolling ──────────────────────────────────
+    _mediaController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 15),
+    )..repeat();
+
     // ── Séquence ─────────────────────────────────────────
     _start();
   }
@@ -113,6 +124,7 @@ class _BonoboSplashScreenState extends State<BonoboSplashScreen>
     _pulseController.dispose();
     _barController.dispose();
     _exitController.dispose();
+    _mediaController.dispose();
     super.dispose();
   }
 
@@ -187,8 +199,8 @@ class _BonoboSplashScreenState extends State<BonoboSplashScreen>
                   },
                   child: Image.asset(
                     'assets/images/logo_white.png',
-                    width: 260,
-                    height: 90,
+                    width: 320,
+                    height: 110,
                     fit: BoxFit.contain,
                     filterQuality: FilterQuality.high,
                     errorBuilder: (_, __, ___) => const _FallbackLogo(),
@@ -198,8 +210,8 @@ class _BonoboSplashScreenState extends State<BonoboSplashScreen>
                 // ── Sous-titre + barre de chargement ─────────────────────
                 Positioned(
                   bottom: 72,
-                  left: 40,
-                  right: 40,
+                  left: 0,
+                  right: 0,
                   child: AnimatedBuilder(
                     animation: _entryController,
                     builder: (context, child) {
@@ -210,34 +222,50 @@ class _BonoboSplashScreenState extends State<BonoboSplashScreen>
                     },
                     child: Column(
                       children: [
+                        // Dynamic Media Marquee
+                        _buildMediaMarquee(),
+                        const SizedBox(height: 32),
                         const Text(
-                          "L'actualité congolaise en un seul endroit",
+                          "L'Actualité Congolaise Autrement",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Toute l'info de vos médias préférés en un seul endroit",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white54,
                             fontSize: 12,
-                            letterSpacing: 0.3,
-                            height: 1.4,
+                            letterSpacing: 0.2,
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 30),
                         // Barre de progression nette
-                        AnimatedBuilder(
-                          animation: _barController,
-                          builder: (context, _) {
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                value: _barProgress.value,
-                                minHeight: 2,
-                                backgroundColor: Colors.white10,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.primaryGreenStart
-                                      .withValues(alpha: 0.85),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 60),
+                          child: AnimatedBuilder(
+                            animation: _barController,
+                            builder: (context, _) {
+                              return ClipRRect(
+                                borderRadius: BorderRadius.circular(2),
+                                child: LinearProgressIndicator(
+                                  value: _barProgress.value,
+                                  minHeight: 2,
+                                  backgroundColor: Colors.white10,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.primaryGreenStart
+                                        .withValues(alpha: 0.85),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -247,6 +275,81 @@ class _BonoboSplashScreenState extends State<BonoboSplashScreen>
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediaMarquee() {
+    final sources = ref.watch(dynamicMediaSourcesProvider).valueOrNull ?? [];
+    if (sources.isEmpty) return const SizedBox(height: 44);
+
+    // On double ou triple la liste pour le scroll infini sans accroc
+    final scrollingList = [...sources, ...sources, ...sources];
+
+    return SizedBox(
+      height: 44,
+      child: AnimatedBuilder(
+        animation: _mediaController,
+        builder: (context, _) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              // On définit une largeur par item
+              const double itemWidth = 80.0;
+              final double totalWidth = scrollingList.length * itemWidth;
+              // Le décalage dépend de la progression de l'animation
+              final double offset = _mediaController.value * (totalWidth / 3);
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Transform.translate(
+                    offset: Offset(-offset, 0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: scrollingList.map((s) {
+                        return Container(
+                          width: itemWidth,
+                          alignment: Alignment.center,
+                          child: Opacity(
+                            opacity: 0.6,
+                            child: _buildMediaIcon(s),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMediaIcon(MediaSource source) {
+    if (source.logoUrl.isNotEmpty && source.logoUrl.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: source.logoUrl,
+        height: 28,
+        fit: BoxFit.contain,
+        placeholder: (_, __) => _initialsIcon(source),
+        errorWidget: (_, __, ___) => _initialsIcon(source),
+      );
+    }
+    return _initialsIcon(source);
+  }
+
+  Widget _initialsIcon(MediaSource source) {
+    return Center(
+      child: Text(
+        source.initials,
+        style: const TextStyle(
+          color: Colors.white24,
+          fontSize: 14,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1,
         ),
       ),
     );

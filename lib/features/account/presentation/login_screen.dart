@@ -136,9 +136,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     }
   }
 
-  void _onSocialLogin(String provider) {
+  Future<void> _onSocialLogin(String provider) async {
     if (provider == 'Google') {
-      ref.read(authProvider.notifier).signInWithGoogle();
+      try {
+        await ref.read(authProvider.notifier).signInWithGoogle();
+        if (mounted) {
+          BonoboSoftToast.show(context,
+              message: 'Bienvenue sur Bonobo !',
+              icon: Icons.check_circle_rounded,
+              iconColor: AppColors.primaryGreenStart);
+          context.go('/');
+        }
+      } catch (e) {
+        if (mounted) {
+          BonoboSoftToast.show(context,
+              message: e.toString(),
+              icon: Icons.error_outline_rounded,
+              iconColor: AppColors.error);
+        }
+      }
     }
   }
 
@@ -250,28 +266,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      padding: const EdgeInsets.fromLTRB(24, 40, 24, 0),
       child: Column(
         children: [
-          // Logo
+          // Logo - Agrandit pour une meilleure visibilité
           Image.asset(
             'assets/images/logo_white.png',
-            height: 52,
+            height: 100,
+            fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => Text(
               'BONOBO',
               style: GoogleFonts.poppins(
-                  fontSize: 32,
+                  fontSize: 40,
                   fontWeight: FontWeight.w900,
                   color: Colors.white),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 24),
           Text(
             'L\'information congolaise, en un seul endroit.',
             style: GoogleFonts.inter(
-              fontSize: 13,
-              color: Colors.white60,
-              letterSpacing: 0.2,
+              fontSize: 14,
+              color: Colors.white70,
+              letterSpacing: 0.3,
             ),
             textAlign: TextAlign.center,
           ),

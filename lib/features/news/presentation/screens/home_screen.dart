@@ -22,6 +22,11 @@ import '../../../categories/domain/category.dart' as domain;
 import '../../../categories/providers/category_providers.dart';
 import '../widgets/article_card.dart';
 import '../widgets/hero_slider_widget.dart';
+import '../../../../shared/providers/auth_provider.dart';
+import '../../../account/presentation/widgets/journalist_modals.dart';
+import '../../../ads/domain/ad_model.dart';
+import '../../../ads/providers/ad_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const double _kHeroHeight = 360.0;
 
@@ -61,15 +66,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     super.initState();
     _scrollController.addListener(_onScroll);
     
-    // Initialiser le service de synchronisation temps-réel
+    // Initialiser le service de synchronisation temps-réel et vérifier les pubs modales
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(syncServiceProvider).start();
+      _checkForModalAd();
     });
   }
 
   void _onScroll() {
     final solid = _scrollController.offset > 20;
     if (solid != _appBarSolid) setState(() => _appBarSolid = solid);
+  }
+
+  void _checkForModalAd() async {
+    try {
+      final ads = await ref.read(adServiceProvider).fetchAds(position: 'modal');
+      if (ads.isNotEmpty && mounted) {
+        final ad = ads.first;
+        _showModalAd(ad);
+      }
+    } catch (_) {}
+  }
+
+  void _showModalAd(AdModel ad) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        // Track view
+        ref.read(adServiceProvider).trackEvent(ad.id, 'view');
+        
+        // Auto-close after duration
+        Future.delayed(Duration(seconds: ad.displayDuration), () {
+          if (Navigator.canPop(context)) Navigator.pop(context);
+        });
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  if (ad.redirectUrl != null) {
+                    final url = Uri.parse(ad.redirectUrl!);
+                    if (await canLaunchUrl(url)) {
+                      ref.read(adServiceProvider).trackEvent(ad.id, 'click');
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                  }
+                  if (Navigator.canPop(context)) Navigator.pop(context);
+                },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.network(
+                    ad.imageUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -152,11 +221,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     // ── Liste (3)
     addList(3);
     // ── Bannière Journaliste
-    slivers.add(SliverToBoxAdapter(child: _JournalistBanner(onTap: () => context.push('/journalist'))));
+    slivers.add(SliverToBoxAdapter(
+      child: _JournalistBanner(
+        onTap: () {
+          final auth = ref.read(authProvider);
+          if (!auth.isAuthenticated) {
+            context.push('/compte');
+            BonoboSoftToast.show(context, message: 'Connectez-vous pour postuler.', icon: Icons.info_outline_rounded, iconColor: AppColors.primaryGreenStart);
+          } else if (auth.role == 'user') {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => const JournalistApplicationModal(),
+            );
+          } else {
+            context.push('/journalist');
+          }
+        },
+      ),
+    ));
     // ── Grille 2 col (4)
     addGrid2(4);
-    // ── Pub
-    slivers.add(const SliverToBoxAdapter(child: AdPlaceholder(height: 60, label: 'Espace publicitaire')));
+    slivers.add(const SliverToBoxAdapter(child: BonoboAdWidget(position: 'home_top', height: 60, label: 'Espace publicitaire')));
     // ── Vedette
     addFeatured();
     // ── Liste (5)
@@ -170,7 +257,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     addFeatured();
     // ── Pub 2
     if (i < total) {
-      slivers.add(const SliverToBoxAdapter(child: AdPlaceholder(height: 60, label: 'Espace publicitaire')));
+      slivers.add(const SliverToBoxAdapter(child: BonoboAdWidget(position: 'home_middle', height: 60, label: 'Espace publicitaire')));
     }
     // ── Liste (5)
     addList(5);
@@ -412,7 +499,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 child: _HorizontalArticleStrip(
                   articles: filtered
                       .where((a) => !heroArticles.any((h) => h.id == a.id))
-                      .take(6)
+                      .take(10)
                       .toList(),
                 ),
               ),
@@ -627,7 +714,7 @@ class _HorizontalArticleStrip extends ConsumerWidget {
             ),
           ),
           SizedBox(
-            height: 190,
+            height: 175,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -659,7 +746,7 @@ class _HorizontalArticleStrip extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           article.title,
                           style: TextStyle(
@@ -671,7 +758,7 @@ class _HorizontalArticleStrip extends ConsumerWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           article.sourceName,
                           style: TextStyle(
@@ -1679,7 +1766,8 @@ class _EditorialHeader extends ConsumerWidget {
               const SizedBox(width: 6),
               _HeaderBtn(icon: themeIcon, onTap: () => ref.read(themeProvider.notifier).toggle(), useDarkElements: useDarkElements),
               const SizedBox(width: 6),
-              _HeaderBtn(icon: Icons.person_outline_rounded, onTap: onAccount, useDarkElements: useDarkElements),
+              // Account with status indicator
+              _AccountHeaderBtn(onAccount: onAccount, useDarkElements: useDarkElements),
             ],
           ),
         ],
@@ -1711,6 +1799,64 @@ class _HeaderBtn extends StatelessWidget {
               width: 0.8),
         ),
         child: Icon(icon, color: useDarkElements ? AppColors.textPrimary : Colors.white, size: 17),
+      ),
+    );
+  }
+}
+
+class _AccountHeaderBtn extends ConsumerWidget {
+  final VoidCallback onAccount;
+  final bool useDarkElements;
+
+  const _AccountHeaderBtn({required this.onAccount, required this.useDarkElements});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthenticated = ref.watch(authProvider.select((s) => s.isAuthenticated));
+    final iconColor = useDarkElements ? AppColors.textPrimary : Colors.white;
+    
+    return GestureDetector(
+      onTap: onAccount,
+      child: Stack(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: useDarkElements ? Colors.black.withOpacity(0.05) : Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: useDarkElements ? Colors.black.withOpacity(0.05) : Colors.white.withOpacity(0.08),
+                  width: 0.8),
+            ),
+            child: Icon(
+              isAuthenticated ? Icons.person_rounded : Icons.person_outline_rounded,
+              color: isAuthenticated ? AppColors.primaryGreenStart : iconColor,
+              size: 17,
+            ),
+          ),
+          if (isAuthenticated)
+            Positioned(
+              top: 6,
+              right: 6,
+              child: Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreenStart,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: useDarkElements ? Colors.white : Colors.black, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryGreenStart.withOpacity(0.5),
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

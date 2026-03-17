@@ -108,14 +108,27 @@ class ArticleGridCard extends ConsumerWidget {
                           BoxShadow(color: sourceColor.withValues(alpha: 0.3), blurRadius: 6)
                         ],
                       ),
-                      child: Text(
-                        source?.name.toUpperCase() ?? article.sourceName.toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.5,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            source?.name.toUpperCase() ?? article.sourceName.toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          if (source?.certificationIcon != null) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              source!.certificationIcon,
+                              size: 10,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
@@ -141,7 +154,7 @@ class ArticleGridCard extends ConsumerWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     Icon(
@@ -174,7 +187,7 @@ class ArticleGridCard extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
         ],
       ),
     );
@@ -249,14 +262,27 @@ class ArticleListCard extends ConsumerWidget {
                           color: sourceColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(
-                          article.sourceName.toUpperCase(),
-                          style: TextStyle(
-                            color: sourceColor,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              article.sourceName.toUpperCase(),
+                              style: TextStyle(
+                                color: sourceColor,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            if (source?.certificationIcon != null) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                source!.certificationIcon,
+                                size: 11,
+                                color: sourceColor,
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       if (showBadge) ...[
@@ -270,7 +296,7 @@ class ArticleListCard extends ConsumerWidget {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     article.title,
                     style: TextStyle(
@@ -282,7 +308,7 @@ class ArticleListCard extends ConsumerWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Icon(Icons.flash_on_rounded, size: 12, color: sourceColor.withValues(alpha: 0.6)),
@@ -377,16 +403,29 @@ class ArticleFeaturedCard extends ConsumerWidget {
                       color: sourceColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(
-                      '${article.sourceName.toUpperCase()} · VEDETTE',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.0,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${article.sourceName.toUpperCase()} · VEDETTE',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          if (source?.certificationIcon != null) ...[
+                            const SizedBox(width: 6),
+                            Icon(
+                              source!.certificationIcon,
+                              size: 11,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                  ),
                   const SizedBox(height: 14),
                   Text(
                     article.title,
@@ -488,9 +527,22 @@ class ArticleCondensedCard extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text(
-                        article.sourceName,
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: sourceColor),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            article.sourceName,
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: sourceColor),
+                          ),
+                          if (source?.certificationIcon != null) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              source!.certificationIcon,
+                              size: 11,
+                              color: sourceColor,
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(width: 6),
                       const Text('·', style: TextStyle(color: AppColors.textSecondary)),

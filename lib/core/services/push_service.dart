@@ -56,6 +56,10 @@ class PushService {
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
       _pendingArticleId = initialMessage.data['articleId'];
+      final pushLogId = initialMessage.data['pushLogId'];
+      if (pushLogId != null) {
+        _trackEvent(pushLogId, 'click');
+      }
     }
   }
 
@@ -116,6 +120,36 @@ class PushService {
     }
   }
 
+  // ── Tracking ───────────────────────────────────────────────────────────────
+
+  Future<void> _trackEvent(String pushLogId, String type) async {
+    try {
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(seconds: 5),
+        headers: {'Content-Type': 'application/json'},
+      ));
+
+      final token = LocalStorage.getToken();
+      final platform = Platform.isIOS ? 'ios' : 'android';
+
+      await dio.post(
+        '/api/v1/push/track',
+        data: {
+          'pushLogId': pushLogId,
+          'type': type,
+          'platform': platform,
+        },
+        options: Options(
+          headers: token != null ? {'Authorization': 'Bearer $token'} : null,
+        ),
+      );
+      debugPrint('[PushService] Event tracked: $type for $pushLogId');
+    } catch (e) {
+      debugPrint('[PushService] Track failed: $e');
+    }
+  }
+
   // ── Foreground message (app ouverte) ───────────────────────────────────────
 
   Future<void> _onForegroundMessage(RemoteMessage message) async {
@@ -126,6 +160,11 @@ class PushService {
         notif?.apple?.imageUrl ??
         message.data['imageUrl'] as String?;
     final articleId = message.data['articleId'] as String?;
+    final pushLogId = message.data['pushLogId'] as String?;
+
+    if (pushLogId != null) {
+      _trackEvent(pushLogId, 'open');
+    }
 
     await NotificationService().showRemoteNotification(
       title: title,
@@ -140,6 +179,12 @@ class PushService {
 
   void _onMessageTapped(RemoteMessage message) {
     final articleId = message.data['articleId'] as String?;
+    final pushLogId = message.data['pushLogId'] as String?;
+
+    if (pushLogId != null) {
+      _trackEvent(pushLogId, 'click');
+    }
+
     if (articleId != null && articleId.isNotEmpty) {
       _navigateToArticle(articleId);
     }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +40,8 @@ class AuthResponse {
   }
 }
 
+
+
 /// Service d'authentification — contacte le backend Bonobo.
 /// Les endpoints sont documentés dans docs/backend-api-auth.md.
 class AuthService {
@@ -52,7 +56,10 @@ class AuthService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-App-Platform': defaultTargetPlatform.name,
+          'X-App-Platform': Platform.operatingSystem,
+          'X-App-Version': '1.0.0',
+          'X-Device-Info': Platform.operatingSystemVersion,
+          'X-Device-Locale': Platform.localeName,
         },
       ),
     );

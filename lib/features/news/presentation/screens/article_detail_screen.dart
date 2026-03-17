@@ -22,6 +22,7 @@ import '../../domain/feed_news.dart';
 import '../../providers/news_providers.dart';
 import '../widgets/article_reactions.dart';
 import '../../../../shared/providers/marketing_provider.dart';
+import '../../../../shared/widgets/ad_placeholder.dart';
 
 class ArticleDetailScreen extends ConsumerStatefulWidget {
   final String articleId;
@@ -379,7 +380,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen>
                         // Emplacement publicitaire (compact)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: _AdBanner(isDark: isDark),
+                          child: const BonoboAdWidget(position: 'article_details', height: 60),
                         ),
 
                         // Bouton lire la suite
@@ -507,10 +508,11 @@ class _FloatingEngagementBar extends ConsumerWidget {
 
   void _requireAuth(BuildContext ctx, WidgetRef ref, VoidCallback action) {
     if (!ref.read(authProvider).isAuthenticated) {
+      // Redirection directe pour plus d'interactivité
       BonoboSoftToast.show(ctx,
-        message: 'Connectez-vous pour effectuer cette action.',
-        icon: Icons.lock_outline_rounded,
-        iconColor: Colors.orangeAccent,
+        message: 'Accès restreint. Veuillez vous connecter.',
+        icon: Icons.account_circle_outlined,
+        iconColor: AppColors.primaryGreenStart,
       );
       ctx.push('/compte');
       return;
@@ -1027,41 +1029,7 @@ class _ArticleBody extends StatelessWidget {
   }
 }
 
-// ─── Bannière publicitaire (emplacement réservé) ─────────────────────────────
-class _AdBanner extends StatelessWidget {
-  final bool isDark;
-  const _AdBanner({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.07) : Colors.grey.shade200,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.campaign_rounded, size: 15,
-              color: isDark ? Colors.white24 : Colors.grey.shade400),
-          const SizedBox(width: 8),
-          Text(
-            'Espace publicitaire',
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.white24 : Colors.grey.shade400,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// _AdBanner removed in favor of BonoboAdWidget
 
 // ─── Bouton "Lire la suite" ───────────────────────────────────────────────────
 class _ReadMoreButton extends StatelessWidget {

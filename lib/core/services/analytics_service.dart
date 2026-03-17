@@ -33,58 +33,47 @@ class AnalyticsService {
   /// Appelé à l'ouverture de ArticleDetailScreen.
   Future<void> trackArticleView(FeedNews article) async {
     try {
-      final now = DateTime.now().toUtc().toIso8601String();
       final payload = <String, dynamic>{
         'articleId': article.id,
-        'sourceId': article.sourceId,
-        'sourceName': article.sourceName,
-        'publishedAt': article.publishedAt.toUtc().toIso8601String(),
-        'at': now,
-        'device': defaultTargetPlatform.name,
+        'type': 'view',
+        'source': article.sourceName,
+        'title': article.title,
+        'category': article.category,
+        'deviceType': defaultTargetPlatform.name.toLowerCase(),
       };
 
-      final userId = LocalStorage.getUserId();
-      if (userId != null) {
-        payload['userId'] = userId;
-      } else {
-        payload['anonymousId'] = LocalStorage.getAnonymousId();
+      final deviceId = LocalStorage.getAnonymousId();
+      if (deviceId != null) {
+        payload['deviceId'] = deviceId;
       }
 
-      await _dio.post('/api/v1/events/article-view', data: payload);
+      await _dio.post('/api/v1/events', data: payload);
       if (kDebugMode) {
-        debugPrint('[Analytics] article-view → ${article.id}');
+        debugPrint('[Analytics] view tracked → ${article.id}');
       }
     } catch (e) {
-      // Les erreurs analytics sont silencieuses — ne jamais bloquer l'UX.
-      if (kDebugMode) debugPrint('[Analytics] Error article-view: $e');
+      if (kDebugMode) debugPrint('[Analytics] Error tracking view: $e');
     }
   }
 
   /// Enregistre un partage d'article.
-  /// [shareMethod] : "link" | "pdf" | "whatsapp" | "twitter" | "copy"
   Future<void> trackArticleShare(FeedNews article,
       {required String shareMethod}) async {
     try {
       final payload = <String, dynamic>{
         'articleId': article.id,
-        'sourceId': article.sourceId,
-        'shareMethod': shareMethod,
-        'at': DateTime.now().toUtc().toIso8601String(),
+        'type': 'share',
+        'source': article.sourceName,
+        'title': article.title,
+        'category': article.category,
       };
 
-      final userId = LocalStorage.getUserId();
-      if (userId != null) {
-        payload['userId'] = userId;
-      } else {
-        payload['anonymousId'] = LocalStorage.getAnonymousId();
-      }
-
-      await _dio.post('/api/v1/events/article-share', data: payload);
+      await _dio.post('/api/v1/events', data: payload);
       if (kDebugMode) {
-        debugPrint('[Analytics] article-share → ${article.id} via $shareMethod');
+        debugPrint('[Analytics] share tracked → ${article.id}');
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('[Analytics] Error article-share: $e');
+      if (kDebugMode) debugPrint('[Analytics] Error tracking share: $e');
     }
   }
 }

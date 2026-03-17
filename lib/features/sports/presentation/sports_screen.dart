@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/bonobo_app_bar.dart';
 import '../../../shared/widgets/offline_banner.dart';
@@ -80,6 +81,48 @@ class SportsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+
+              // --- Actualités Sportives (Section Dynamique) ---
+              if (data.news.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 4, height: 18,
+                          decoration: BoxDecoration(
+                            color: Colors.orangeAccent,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'À la une du sport',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
+                            letterSpacing: -0.4,
+                            color: isDark ? Colors.white : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => _SportsNewsCard(
+                        article: data.news[index],
+                        isDark: isDark,
+                      ),
+                      childCount: data.news.length,
+                    ),
+                  ),
+                ),
+              ],
 
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
@@ -432,6 +475,119 @@ class _UpcomingMatchCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+class _SportsNewsCard extends StatelessWidget {
+  final SportsArticle article;
+  final bool isDark;
+
+  const _SportsNewsCard({required this.article, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final url = Uri.parse(article.url);
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E2235) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (article.imageUrl != null && article.imageUrl!.isNotEmpty)
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(
+                  article.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    child: const Icon(Icons.image_not_supported_rounded, color: Colors.grey),
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          article.sourceName.toUpperCase(),
+                          style: const TextStyle(
+                            color: AppColors.primaryGreen,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (article.publishedAt != null)
+                        Text(
+                          _formatDate(article.publishedAt!),
+                          style: TextStyle(
+                            color: isDark ? Colors.white38 : AppColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    article.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+      if (diff.inMinutes < 60) return "Il y a ${diff.inMinutes}m";
+      if (diff.inHours < 24) return "Il y a ${diff.inHours}h";
+      return "${date.day}/${date.month}";
+    } catch (_) {
+      return "";
+    }
   }
 }
 

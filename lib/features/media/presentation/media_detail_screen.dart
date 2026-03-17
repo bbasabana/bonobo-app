@@ -15,6 +15,7 @@ import '../../../shared/providers/subscription_provider.dart';
 import '../../../shared/widgets/bonobo_article_image.dart';
 import '../../../shared/widgets/bonobo_soft_toast.dart';
 import '../../../shared/widgets/media_favicon.dart';
+import '../../../shared/widgets/ad_placeholder.dart';
 
 class MediaDetailScreen extends ConsumerStatefulWidget {
   final String sourceId;
@@ -242,6 +243,12 @@ class _MediaDetailScreenState extends ConsumerState<MediaDetailScreen> {
                                   isDark: isDark,
                                 ),
                               ),
+                            const SliverToBoxAdapter(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: BonoboAdWidget(position: 'media_details'),
+                              ),
+                            ),
                             if (filtered.length > 2)
                               SliverToBoxAdapter(
                                 child: Padding(
@@ -851,12 +858,16 @@ class _LargeArticleCard extends StatelessWidget {
                         children: [
                           const Icon(Icons.access_time_rounded, size: 10, color: Colors.white70),
                           const SizedBox(width: 3),
-                          Text(
-                            DateFormatter.relative(article.publishedAt),
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
+                          Flexible(
+                            child: Text(
+                              DateFormatter.relative(article.publishedAt),
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

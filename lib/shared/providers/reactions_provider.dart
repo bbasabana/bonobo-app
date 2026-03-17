@@ -1,91 +1,157 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/app_config.dart';
 import '../local_storage.dart';
 import '../models/local_reaction.dart';
+import './auth_provider.dart';
 
 // ─── État réactions d'un article ─────────────────────────────────────────────
 class ReactionsState {
   final ArticleReaction reaction;
-  final List<LocalComment> comments;
+  final List<dynamic> comments;
+  final bool isLoading;
 
-  const ReactionsState({required this.reaction, required this.comments});
+  const ReactionsState({
+    required this.reaction,
+    this.comments = const [],
+    this.isLoading = false,
+  });
 
-  ReactionsState copyWith({ArticleReaction? reaction, List<LocalComment>? comments}) =>
+  ReactionsState copyWith({
+    ArticleReaction? reaction,
+    List<dynamic>? comments,
+    bool? isLoading,
+  }) =>
       ReactionsState(
         reaction: reaction ?? this.reaction,
         comments: comments ?? this.comments,
+        isLoading: isLoading ?? this.isLoading,
       );
 }
 
 class ReactionsNotifier extends StateNotifier<ReactionsState> {
   final String articleId;
+  final Ref _ref;
+  final _dio = Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
 
-  ReactionsNotifier(this.articleId)
+  ReactionsNotifier(this.articleId, this._ref)
       : super(ReactionsState(
           reaction: LocalStorage.getReaction(articleId),
           comments: LocalStorage.getComments(articleId),
-        ));
+        )) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    await fetchReactions();
+  }
+
+  Future<void> fetchReactions() async {
+    try {
+      final token = _ref.read(authProvider).token;
+      final options = token != null
+          ? Options(headers: {'Authorization': 'Bearer $token'})
+          : null;
+
+      final res = await _dio.get(
+        '/api/v1/articles/$articleId/interaction',
+        options: options,
+      );
+
+      if (res.statusCode == 200) {
+        final data = res.data;
+        final newReaction = ArticleReaction(
+          articleId: articleId,
+          isLiked: data['userInteraction'] == 'like',
+          isDisliked: data['userInteraction'] == 'dislike',
+          totalLikes: (data['likes'] as num?)?.toInt() ?? 0,
+        );
+        LocalStorage.saveReaction(newReaction);
+        state = state.copyWith(reaction: newReaction);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Reactions] Error fetching: $e');
+    }
+  }
 
   Future<void> toggleLike() async {
-    final r = state.reaction;
-    final newReaction = ArticleReaction(
-      articleId: r.articleId,
-      isLiked: !r.isLiked,
-      isDisliked: r.isLiked ? r.isDisliked : false,
-      totalLikes: r.isLiked ? (r.totalLikes - 1).clamp(0, 999999) : r.totalLikes + 1,
-    );
-    await LocalStorage.saveReaction(newReaction);
-    state = state.copyWith(reaction: newReaction);
+    await _handleInteraction('like');
   }
 
   Future<void> toggleDislike() async {
-    final r = state.reaction;
-    final newReaction = ArticleReaction(
-      articleId: r.articleId,
-      isLiked: r.isDisliked ? r.isLiked : false,
-      isDisliked: !r.isDisliked,
-      totalLikes: r.isLiked && !r.isDisliked ? (r.totalLikes - 1).clamp(0, 999999) : r.totalLikes,
+    await _handleInteraction('dislike');
+  }
+
+  Future<void> _handleInteraction(String type) async {
+    final token = _ref.read(authProvider).token;
+    if (token == null) return;
+
+    // Optimistic update
+    final current = state.reaction;
+    bool newIsLiked = current.isLiked;
+    bool newIsDisliked = current.isDisliked;
+    int newTotalLikes = current.totalLikes;
+
+    if (type == 'like') {
+      if (current.isLiked) {
+        newIsLiked = false;
+        newTotalLikes = (newTotalLikes - 1).clamp(0, 999999);
+      } else {
+        newIsLiked = true;
+        newTotalLikes++;
+        if (current.isDisliked) newIsDisliked = false;
+      }
+    } else if (type == 'dislike') {
+      if (current.isDisliked) {
+        newIsDisliked = false;
+      } else {
+        newIsDisliked = true;
+        if (current.isLiked) {
+          newIsLiked = false;
+          newTotalLikes = (newTotalLikes - 1).clamp(0, 999999);
+        }
+      }
+    }
+
+    final optimistic = current.copyWith(
+      isLiked: newIsLiked,
+      isDisliked: newIsDisliked,
+      totalLikes: newTotalLikes,
     );
-    await LocalStorage.saveReaction(newReaction);
-    state = state.copyWith(reaction: newReaction);
+    state = state.copyWith(reaction: optimistic);
+
+    try {
+      await _dio.post(
+        '/api/v1/articles/$articleId/interaction',
+        data: {'type': type},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      // Re-fetch to sync with server exactly
+      await fetchReactions();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Reactions] Error interaction: $e');
+      // Revert if error
+      state = state.copyWith(reaction: current);
+    }
   }
 
   Future<void> addComment(String authorName, String text) async {
-    if (text.trim().isEmpty) return;
-    final comment = LocalComment(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      articleId: articleId,
-      authorName: authorName,
-      text: text.trim(),
-      createdAt: DateTime.now(),
-    );
-    final updated = [comment, ...state.comments];
-    await LocalStorage.saveComments(articleId, updated);
-    state = state.copyWith(comments: updated);
+    // Logic moved to CommentNotifier in comment_providers.dart
+    // Use ref.read(commentActionProvider.notifier).postComment(...)
   }
 
   Future<void> likeComment(String commentId) async {
-    final updated = state.comments.map((c) {
-      if (c.id != commentId) return c;
-      c.isLikedByMe = !c.isLikedByMe;
-      c.likes = c.isLikedByMe ? c.likes + 1 : (c.likes - 1).clamp(0, 999999);
-      return c;
-    }).toList();
-    await LocalStorage.saveComments(articleId, updated);
-    state = state.copyWith(comments: updated);
+    // To be implemented on backend later
   }
 
   Future<void> deleteComment(String commentId, String currentUser) async {
-    final updated = state.comments.where((c) {
-      if (c.id == commentId && c.authorName == currentUser) return false;
-      return true;
-    }).toList();
-    await LocalStorage.saveComments(articleId, updated);
-    state = state.copyWith(comments: updated);
+    // To be implemented on backend later
   }
 }
 
 final reactionsProvider =
     StateNotifierProvider.family<ReactionsNotifier, ReactionsState, String>(
-  (ref, articleId) => ReactionsNotifier(articleId),
+  (ref, articleId) => ReactionsNotifier(articleId, ref),
 );

@@ -13,7 +13,10 @@ import '../features/journalist/presentation/journalist_profile_screen.dart';
 import '../features/media/presentation/media_detail_screen.dart';
 import '../features/media/presentation/media_picker_screen.dart';
 import '../features/account/presentation/compte_screen.dart';
+import '../features/account/presentation/notifications_screen.dart';
+import '../features/news/presentation/screens/saved_articles_screen.dart';
 import '../features/news/presentation/screens/search_screen.dart';
+import '../features/about/presentation/screens/about_screen.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/main_scaffold.dart';
 
@@ -109,6 +112,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: JournalistScreen()),
           ),
+          GoRoute(
+            path: '/about',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: AboutScreen()),
+          ),
         ],
       ),
 
@@ -154,6 +162,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/search',
         pageBuilder: (context, state) {
           return _buildSoftTransition(const SearchScreen());
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/saved-articles',
+        pageBuilder: (context, state) {
+          return _buildSoftTransition(const SavedArticlesScreen());
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/notifications',
+        pageBuilder: (context, state) {
+          return _buildSoftTransition(const NotificationsScreen());
         },
       ),
       GoRoute(
