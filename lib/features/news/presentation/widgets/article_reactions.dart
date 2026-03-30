@@ -120,14 +120,7 @@ class _ArticleReactionsSectionState extends ConsumerState<ArticleReactionsSectio
   Future<void> _submitComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
-    if (!_isAuth) {
-      BonoboSoftToast.show(context,
-        message: 'Connectez-vous pour commenter.',
-        icon: Icons.lock_outline_rounded,
-        iconColor: Colors.orangeAccent,
-      );
-      return;
-    }
+    // Anonymous comments allowed
     
     final success = await ref.read(commentActionProvider.notifier).postComment(widget.articleId, text);
     if (success) {

@@ -153,12 +153,18 @@ class PushService {
   // ── Foreground message (app ouverte) ───────────────────────────────────────
 
   Future<void> _onForegroundMessage(RemoteMessage message) async {
+    // FCM ne montre PAS automatiquement une notification en foreground.
+    // On la crée toujours nous-mêmes ici.
     final notif = message.notification;
-    final title = notif?.title ?? message.data['title'] as String? ?? 'Bonobo';
-    final body = notif?.body ?? message.data['body'] as String? ?? '';
-    final imageUrl = notif?.android?.imageUrl ??
-        notif?.apple?.imageUrl ??
-        message.data['imageUrl'] as String?;
+    final title = notif?.title
+        ?? message.data['title'] as String?
+        ?? 'Bonobo';
+    final body = notif?.body
+        ?? message.data['body'] as String?
+        ?? '';
+    final imageUrl = notif?.android?.imageUrl
+        ?? notif?.apple?.imageUrl
+        ?? message.data['imageUrl'] as String?;
     final articleId = message.data['articleId'] as String?;
     final pushLogId = message.data['pushLogId'] as String?;
 
@@ -169,9 +175,8 @@ class PushService {
     await NotificationService().showRemoteNotification(
       title: title,
       body: body,
-      imageUrl: imageUrl,
+      imageUrl: imageUrl?.isNotEmpty == true ? imageUrl : null,
       articleId: articleId,
-      badgeCount: NotificationService.badgeCount + 1,
     );
   }
 
@@ -201,37 +206,53 @@ class PushService {
   }
 }
 
-// ── Handler de background (app FERMÉE) ─────────────────────────────────────────
-// IMPORTANT : doit être une fonction top-level, pas une méthode de classe.
-// Firebase.initializeApp() DOIT être appelé en premier ici.
+// ── Handler de background (app EN ARRIÈRE-PLAN ou DATA-ONLY) ───────────────────
+//
+// Quand l'app est complètement FERMÉE et que FCM envoie un message avec un bloc
+// `notification` (titre + corps), Android affiche la notification directement via
+// l'OS — ce handler N'est PAS appelé dans ce cas.
+//
+// Ce handler est appelé pour :
+//   1. Messages DATA-ONLY (sans bloc `notification`) quand l'app est en background
+//   2. Certains messages en background selon la version FCM
+//
+// Règle : on ne crée une notification locale que si l'OS ne l'a pas déjà affichée
+// (i.e. message.notification == null → data-only).
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Obligatoire : initialiser Firebase avant tout dans le background isolate
+  // Obligatoire : initialiser Firebase dans l'isolate background
   await Firebase.initializeApp();
 
   final notif = message.notification;
-  final title = notif?.title ?? message.data['title'] as String? ?? 'Bonobo';
-  final body = notif?.body ?? message.data['body'] as String? ?? '';
-  final imageUrl = notif?.android?.imageUrl ??
-      notif?.apple?.imageUrl ??
-      message.data['imageUrl'] as String?;
+
+  // Pour les messages notification+data, l'OS Android affiche déjà la notif.
+  // On incrémente juste le badge sans doubler la notification.
+  if (notif != null) {
+    NotificationService.badgeCount++;
+    try {
+      await NotificationService().init();
+      await NotificationService().updateBadge(NotificationService.badgeCount);
+    } catch (_) {}
+    debugPrint('[PushService] Background: badge incrémenté (OS gère l\'affichage).');
+    return;
+  }
+
+  // Message DATA-ONLY : on affiche nous-mêmes la notification
+  final title = message.data['title'] as String? ?? 'Bonobo';
+  final body  = message.data['body']  as String? ?? '';
+  final imageUrl  = message.data['imageUrl']  as String?;
   final articleId = message.data['articleId'] as String?;
 
-  await NotificationService().init();
-
-  // Si FCM a déja généré une notification système, on ne la double pas avec notre notification locale.
-  // FCM met `message.notification` s'il s'agit d'un message "Notification".
-  // On crée notre notification locale UNIQUEMENT s'il s'agit d'un message "Data-Only",
-  // ou si on s'est mis d'accord avec le backend pour toujours envoyer du "Data-Only".
-  if (notif == null) {
+  try {
+    await NotificationService().init();
     await NotificationService().showRemoteNotification(
       title: title,
       body: body,
       imageUrl: imageUrl,
       articleId: articleId,
     );
-  } else {
-    debugPrint('[PushService] Notification système déja gérée par Firebase. Skipping LocalNotification.');
+  } catch (e) {
+    debugPrint('[PushService] Background showRemoteNotification error: $e');
   }
 }
 

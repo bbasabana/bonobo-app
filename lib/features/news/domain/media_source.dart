@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_colors.dart';
 
 enum FeedType { wordpress, rss, drupal, php, other }
 
@@ -137,7 +138,7 @@ class MediaSource extends Equatable {
   Color get certificationColor {
     switch (certification) {
       case 'blue': return Colors.blue;
-      case 'green': return Colors.emerald;
+      case 'green': return AppColors.primaryGreenStart;
       case 'yellow': return Colors.amber;
       case 'red': return Colors.red;
       default: return Colors.transparent;

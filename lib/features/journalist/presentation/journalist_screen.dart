@@ -129,6 +129,41 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
     }
   }
 
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1923),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Déconnexion',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Vous êtes déjà connecté. Voulez-vous vous déconnecter ?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ANNULER', style: TextStyle(color: Colors.white38)),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(authProvider.notifier).logout();
+              Navigator.pop(context);
+              BonoboSoftToast.show(context,
+                  message: 'Déconnexion réussie.',
+                  icon: Icons.info_outline_rounded,
+                  iconColor: AppColors.primaryGreenStart);
+            },
+            child: const Text('SE DÉCONNECTER', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showLearnMore() {
     showModalBottomSheet(
       context: context,
@@ -441,22 +476,50 @@ class _JournalistScreenState extends ConsumerState<JournalistScreen>
           
           Center(
             child: GestureDetector(
-              onTap: () => setState(() => _showAuthForm = true),
-            child: RichText(
-                text: TextSpan(
-                  text: ref.watch(authProvider).isAuthenticated 
-                      ? 'Compte connecté' 
-                      : 'Vous avez déjà un compte ? ',
-                  style: const TextStyle(color: Colors.white54, fontSize: 13),
-                  children: [
-                    if (!ref.watch(authProvider).isAuthenticated)
-                      const TextSpan(
-                        text: 'Se connecter',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+              onTap: () {
+                if (ref.read(authProvider).isAuthenticated) {
+                  _showLogoutDialog();
+                } else {
+                  setState(() => _showAuthForm = true);
+                }
+              },
+              child: ref.watch(authProvider).isAuthenticated
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.primaryGreenStart.withValues(alpha: 0.5)),
                       ),
-                  ],
-                ),
-              ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle_rounded, color: AppColors.primaryGreenStart, size: 14),
+                          SizedBox(width: 8),
+                          Text(
+                            'COMPTE CONNECTÉ',
+                            style: TextStyle(
+                              color: AppColors.primaryGreenStart,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : RichText(
+                      text: const TextSpan(
+                        text: 'Vous avez déjà un compte ? ',
+                        style: TextStyle(color: Colors.white54, fontSize: 13),
+                        children: [
+                          TextSpan(
+                            text: 'Se connecter',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
             ),
           ),
         ],

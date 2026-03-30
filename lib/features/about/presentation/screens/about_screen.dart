@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../shared/widgets/bonobo_app_bar.dart';
 
 class AboutScreen extends ConsumerWidget {
   const AboutScreen({super.key});
@@ -17,43 +17,41 @@ class AboutScreen extends ConsumerWidget {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverToBoxAdapter(
-            child: _AboutHero(isDark: isDark),
-          ),
+          _buildSliverHeader(context, isDark),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SectionTitle(
+                  _InfoCard(
                     title: 'Qui sommes-nous ?',
+                    content: 'Bonobo est un agrégateur de nouvelles intelligent. Nous regroupons les médias certifiés et les sources d\'information les plus fiables dans un espace unique, épuré et sans distraction. Notre rôle est de filtrer l\'essentiel pour vous offrir une expérience de lecture fluide et sourcée.',
                     icon: Icons.hub_rounded,
-                    color: AppColors.primaryGreenStart,
+                    isDark: isDark,
                   ),
-                  const SizedBox(height: 16),
-                  const _SectionText(
-                    text: 'Bonobo est un agrégateur de nouvelles intelligent. Nous regroupons les médias certifiés et les sources d\'information les plus fiables dans un espace unique, épuré et sans distraction. Notre rôle est de filtrer l\'essentiel pour vous offrir une expérience de lecture fluide et sourcée.',
-                  ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
                   
-                  _SectionTitle(
+                  _InfoCard(
                     title: 'Notre Vision',
+                    content: 'Nous croyons que l\'accès à une information de qualité est un droit. Loin des algorithmes addictifs, nous privilégions la rigueur éditoriale de nos partenaires pour valoriser le travail journalistique authentique et sourcé.',
                     icon: Icons.auto_awesome_rounded,
-                    color: Colors.blueAccent,
+                    isDark: isDark,
                   ),
-                  const SizedBox(height: 16),
-                  const _SectionText(
-                    text: 'Nous croyons que l\'accès à une information de qualité est un droit. Loin des algorithmes addictifs, nous privilégions la rigueur éditoriale de nos partenaires pour valoriser le travail journalistique authentique et sourcé.',
-                  ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 48),
 
-                  _SectionTitle(
-                    title: 'Nous Contacter',
-                    icon: Icons.alternate_email_rounded,
-                    color: Colors.orangeAccent,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0, bottom: 20),
+                    child: Text(
+                      'NOUS CONTACTER',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.5,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 20),
                   
                   _ContactCard(
                     title: 'Publicité & Marketing',
@@ -85,10 +83,10 @@ class AboutScreen extends ConsumerWidget {
                       opacity: 0.5,
                       child: Text(
                         '© 2026 Bonobo App · v1.0.5',
-                        style: TextStyle(
+                        style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : AppColors.textPrimary,
+                          color: isDark ? Colors.white70 : AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -102,158 +100,144 @@ class AboutScreen extends ConsumerWidget {
       ),
     );
   }
-}
 
-class _AboutHero extends StatelessWidget {
-  final bool isDark;
-  const _AboutHero({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 280,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark 
-            ? [const Color(0xFF0E1118), const Color(0xFF0E1118)]
-            : [const Color(0xFFF8FAFC), const Color(0xFFF8FAFC)],
-        ),
+  Widget _buildSliverHeader(BuildContext context, bool isDark) {
+    return SliverAppBar(
+      expandedHeight: 260.0,
+      floating: false,
+      pinned: true,
+      elevation: 0,
+      stretch: true,
+      backgroundColor: AppColors.primaryGreen,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
       ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -50,
-            right: -50,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.primaryGreen.withOpacity(0.15),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
+      flexibleSpace: FlexibleSpaceBar(
+        stretchModes: const [
+          StretchMode.zoomBackground,
+          StretchMode.blurBackground,
+        ],
+        background: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF4ADE80), Color(0xFF01732C), Color(0xFF036027)],
+              stops: [0.0, 0.5, 1.0],
             ),
           ),
-          Positioned(
-            bottom: -80,
-            left: -80,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Colors.blueAccent.withOpacity(0.1),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                      onPressed: () => Navigator.pop(context),
-                      color: isDark ? Colors.white70 : AppColors.textPrimary,
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.all(20),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Subtle patterns or decorative elements
+              Positioned(
+                top: -60,
+                right: -60,
+                child: Container(
+                  width: 200,
+                  height: 200,
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: isDark ? null : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      )
-                    ],
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.08),
                   ),
+                ),
+              ),
+              Positioned(
+                bottom: -80,
+                left: -40,
+                child: Container(
+                  width: 240,
+                  height: 240,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withOpacity(0.05),
+                  ),
+                ),
+              ),
+              // Simplified Logo presentation
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
                   child: Image.asset(
                     'assets/images/logo_white.png',
-                    width: 140,
+                    width: 160,
                     fit: BoxFit.contain,
                   ),
                 ),
-                const SizedBox(height: 20),
-                const Spacer(),
-                const Spacer(),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
+class _InfoCard extends StatelessWidget {
   final String title;
+  final String content;
   final IconData icon;
-  final Color color;
+  final bool isDark;
 
-  const _SectionTitle({
+  const _InfoCard({
     required this.title,
+    required this.content,
     required this.icon,
-    required this.color,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF161B26) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppColors.primaryGreen, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SectionText extends StatelessWidget {
-  final String text;
-  const _SectionText({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 15,
-        height: 1.6,
-        color: isDark ? Colors.white70 : AppColors.textSecondary,
-        fontWeight: FontWeight.w400,
+          const SizedBox(height: 20),
+          Text(
+            content,
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              height: 1.7,
+              color: isDark ? Colors.white70 : AppColors.textSecondary,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -280,24 +264,31 @@ class _ContactCard extends StatelessWidget {
       onTap: () => _launchEmail(email),
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.04) : Colors.white,
+          color: isDark ? const Color(0xFF161B26) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.1 : 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: AppColors.primaryGreen.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: AppColors.primaryGreenStart, size: 20),
+              child: Icon(icon, color: AppColors.primaryGreen, size: 22),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -306,24 +297,26 @@ class _ContactCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 12,
                       color: isDark ? Colors.white54 : AppColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     email,
-                    style: const TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 13,
-                      color: AppColors.primaryGreenStart,
+                      color: AppColors.primaryGreen,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -331,8 +324,9 @@ class _ContactCard extends StatelessWidget {
               ),
             ),
             Icon(
-              Icons.chevron_right_rounded,
-              color: isDark ? Colors.white24 : Colors.black12,
+              Icons.alternate_email_rounded,
+              size: 18,
+              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
             ),
           ],
         ),

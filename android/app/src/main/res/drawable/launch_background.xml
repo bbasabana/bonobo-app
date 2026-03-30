@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Fond uni = _bg1 du Flutter splash (#0A1F10 vert forêt Bonobo).
+     Même couleur → transition native→Flutter totalement invisible. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <bitmap android:gravity="fill" android:src="@drawable/background"/>
-    </item>
+    <item android:drawable="@color/splash_background"/>
 </layer-list>

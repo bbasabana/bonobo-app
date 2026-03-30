@@ -48,11 +48,33 @@ class AnalyticsService {
       }
 
       await _dio.post('/api/v1/events', data: payload);
-      if (kDebugMode) {
-        debugPrint('[Analytics] view tracked → ${article.id}');
-      }
     } catch (e) {
       if (kDebugMode) debugPrint('[Analytics] Error tracking view: $e');
+    }
+  }
+
+  /// Enregistre un signal de présence (pulse) pour mesurer la durée.
+  Future<void> trackArticlePulse(FeedNews article, int durationSeconds) async {
+    try {
+      final payload = <String, dynamic>{
+        'articleId': article.id,
+        'type': 'pulse',
+        'duration': durationSeconds,
+        'source': article.sourceName,
+        'title': article.title,
+      };
+
+      final deviceId = LocalStorage.getAnonymousId();
+      if (deviceId != null) {
+        payload['deviceId'] = deviceId;
+      }
+
+      await _dio.post('/api/v1/events', data: payload);
+      if (kDebugMode) {
+        debugPrint('[Analytics] pulse tracked → ${article.id} (${durationSeconds}s)');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Analytics] Error tracking pulse: $e');
     }
   }
 

@@ -64,6 +64,8 @@ dependencies:
   google_fonts: ^6.2.1
   audioplayers: ^6.6.0
   flutter_local_notifications: ^21.0.0
+  flutter_app_badge_control: ^0.0.1
+  shared_preferences: ^2.3.2
   google_sign_in: ^6.2.1
 
 
@@ -71,7 +73,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  flutter_native_splash: ^2.4.3
+  # flutter_native_splash: ^2.4.3
   flutter_launcher_icons: ^0.14.3
 
 flutter:
@@ -83,11 +85,10 @@ flutter:
     - assets/sounds/
 
 
-# Splash natif (remplace le splash par défaut Flutter)
-flutter_native_splash:
-  color: "#0D1B12"
-  android_12:
-    color: "#0D1B12"
+# flutter_native_splash:
+#   color: "#0D1B12"
+#   android_12:
+#     color: "#0D1B12"
 
 # Icône application (logo_icon_white.png)
 flutter_launcher_icons:

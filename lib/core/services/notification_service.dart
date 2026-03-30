@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_app_badge_control/flutter_app_badge_control.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/image_downloader.dart';
 
 /// Service centralisé de notifications locales Bonobo.
@@ -41,6 +43,10 @@ class NotificationService {
         debugPrint('[NotificationService] tap payload: ${r.payload}');
       },
     );
+
+    // Initialiser le badgeCount depuis le stockage
+    final prefs = await SharedPreferences.getInstance();
+    badgeCount = prefs.getInt('notification_badge_count') ?? 0;
 
     if (Platform.isAndroid) {
       final plugin = _localNotif.resolvePlatformSpecificImplementation<
@@ -99,7 +105,10 @@ class NotificationService {
     String? sourceName,
   }) async {
     if (!_initialized) await init();
-    badgeCount += count;
+    final prefs = await SharedPreferences.getInstance();
+    badgeCount = (prefs.getInt('notification_badge_count') ?? 0) + count;
+    await prefs.setInt('notification_badge_count', badgeCount);
+    updateBadge(badgeCount);
 
     final body = sourceName != null
         ? '$count nouv. article${count > 1 ? 's' : ''} — $sourceName'
@@ -148,7 +157,14 @@ class NotificationService {
     int? badgeCount,
   }) async {
     if (!_initialized) await init();
-    if (badgeCount != null) NotificationService.badgeCount = badgeCount;
+    final prefs = await SharedPreferences.getInstance();
+    if (badgeCount != null) {
+      NotificationService.badgeCount = badgeCount;
+    } else {
+      NotificationService.badgeCount = (prefs.getInt('notification_badge_count') ?? 0) + 1;
+    }
+    await prefs.setInt('notification_badge_count', NotificationService.badgeCount);
+    updateBadge(NotificationService.badgeCount);
 
     StyleInformation? styleInformation;
     String? downloadedImagePath;
@@ -322,8 +338,21 @@ class NotificationService {
     debugPrint('[NotificationService] playSummarySound (no-op)');
   }
 
+  Future<void> updateBadge(int count) async {
+    if (await FlutterAppBadgeControl.isAppBadgeSupported()) {
+      if (count <= 0) {
+        FlutterAppBadgeControl.removeBadge();
+      } else {
+        FlutterAppBadgeControl.updateBadgeCount(count);
+      }
+    }
+  }
+
   Future<void> clearBadge() async {
     badgeCount = 0;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('notification_badge_count', 0);
+    updateBadge(0);
   }
 
   Future<void> dispose() async {}

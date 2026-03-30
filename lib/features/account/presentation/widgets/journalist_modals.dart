@@ -422,7 +422,7 @@ class _MediaCertificationRequestModalState
             title: 'Badge Vert (Partenaire)',
             subtitle: 'Pour les médias partenaires officiels de Bonobo.',
             icon: Icons.verified_user_rounded,
-            color: Colors.emerald,
+            color: AppColors.primaryGreenStart,
             isSelected: _selectedType == 'green',
             onTap: () => setState(() => _selectedType = 'green'),
             isDark: isDark,

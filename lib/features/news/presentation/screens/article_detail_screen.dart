@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -48,6 +50,12 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen>
   final _scrollController = ScrollController();
   bool _titleVisible = false;
 
+  // Analytics : Temps de lecture
+  Timer? _pulseTimer;
+  int _secondsOnPage = 0;
+  static const _pulseInterval = 15; // secondes
+
+
   @override
   void initState() {
     super.initState();
@@ -65,11 +73,24 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen>
         setState(() => _titleVisible = nowVisible);
       }
     });
+
+    _startPulseTimer();
+  }
+
+  void _startPulseTimer() {
+    _pulseTimer?.cancel();
+    _pulseTimer = Timer.periodic(const Duration(seconds: _pulseInterval), (timer) {
+      if (_article != null && mounted) {
+        _secondsOnPage += _pulseInterval;
+        ref.read(analyticsServiceProvider).trackArticlePulse(_article!, _pulseInterval);
+      }
+    });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _pulseTimer?.cancel();
     super.dispose();
   }
 
@@ -586,8 +607,8 @@ class _FloatingEngagementBar extends ConsumerWidget {
               inactiveColor: inactiveColor,
               lockedColor: lockedColor,
               active: false,
-              locked: !isAuth,
-              onTap: () => _requireAuth(context, ref, onComment),
+              locked: false,
+              onTap: onComment,
             ),
           ),
 

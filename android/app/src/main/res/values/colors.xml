@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="launch_background">#FF1A1A2E</color>
-	<color name="ic_launcher_background">#1A1A2E</color>
+    <!-- Fond splash = _bg1 du Flutter splash (#0A1F10 vert forêt) -->
+    <color name="splash_background">#0A1F10</color>
+    <color name="launch_background">#0A1F10</color>
+    <color name="ic_launcher_background">#0A1F10</color>
     <!-- Couleur accent des notifications FCM — vert Bonobo -->
     <color name="notification_color">#1EB45A</color>
 </resources>

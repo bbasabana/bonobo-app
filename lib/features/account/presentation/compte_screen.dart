@@ -10,6 +10,7 @@ import '../../../shared/providers/auth_provider.dart';
 import 'compte_screen.dart';
 
 import 'widgets/journalist_modals.dart';
+import '../data/journalist_application_service.dart';
 import '../../media/presentation/devenir_media_source_modal.dart';
 import '../../news/presentation/screens/saved_articles_screen.dart';
 import 'notifications_screen.dart';
@@ -686,7 +687,7 @@ class _CompteScreenState extends ConsumerState<CompteScreen> {
       label = 'Officiel';
     } else if (cert == 'green') {
       icon = Icons.verified_user_rounded;
-      color = Colors.emerald;
+      color = AppColors.primaryGreenStart;
       label = 'Partenaire';
     } else if (cert == 'yellow') {
       icon = Icons.report_problem_rounded;

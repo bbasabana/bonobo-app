@@ -28,7 +28,9 @@ import '../../../ads/domain/ad_model.dart';
 import '../../../ads/providers/ad_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-const double _kHeroHeight = 360.0;
+// Hauteur du hero : 42 % de la hauteur d'écran, borné entre 260 et 420 px.
+// Calculé dynamiquement dans _buildBody().
+const double _kHeroHeightFallback = 360.0;
 
 // ── Catégories statiques de secours (utilisées si le fetch échoue ou pendant le premier chargement)
 const _fallbackCategories = [
@@ -150,7 +152,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 
   /// Layout multi-style avec bounds-safe : grille 2, vedette, liste, etc.
-  List<Widget> _buildMixedLayout(List<FeedNews> articles, BuildContext ctx) {
+  List<Widget> _buildMixedLayout(List<FeedNews> articles, BuildContext ctx, double heroHeight) {
     final slivers = <Widget>[];
     final total = articles.length;
     if (total == 0) return slivers;
@@ -176,10 +178,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       final n = take(count);
       if (n <= 0) return;
       final start = i;
+      // Ratio adaptatif : on laisse la carte gérer sa propre hauteur via mainAxisExtent.
+      // mainAxisExtent = image height (calculée dans ArticleGridCard) + texte (≈80px)
+      final screenW = MediaQuery.sizeOf(ctx).width;
+      final tileW = (screenW - 46) / 2;
+      final imgH = (tileW * 0.70).clamp(90.0, 160.0);
+      final tileH = imgH + 80; // image + titre 2 lignes + date
       slivers.add(SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         sliver: SliverGrid(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.7),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 14,
+            mainAxisExtent: tileH,
+          ),
           delegate: SliverChildBuilderDelegate((_, idx) => ArticleGridCard(article: articles[start + idx]), childCount: n),
         ),
       ));
@@ -439,9 +452,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   Widget _buildBody(BuildContext ctx, List<FeedNews> articles, List<FeedNews> heroArticles,
       bool hasData, bool isFirstLoad, bool isRefreshing, bool isOnline, double statusBarH) {
     final filtered = _filterArticles(articles);
+    // Hero height : 42 % de la hauteur d'écran, entre 260 et 400 px
+    final screenH = MediaQuery.sizeOf(ctx).height;
+    final heroHeight = (screenH * 0.42).clamp(260.0, 400.0);
 
     if (isFirstLoad) {
-      return _LoadingBody(statusBarH: 0); // statusBarH déjà pris par le header fixe
+      return _LoadingBody(heroHeight: heroHeight);
     }
 
     if (!hasData) {
@@ -484,10 +500,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           // ── Hero slider ──────────────────────────────────
           SliverToBoxAdapter(
             child: SizedBox(
-              height: _kHeroHeight,
+              height: heroHeight,
               child: heroArticles.isNotEmpty
                   ? HeroSliderWidget(articles: heroArticles)
-                  : _HeroShimmer(height: _kHeroHeight),
+                  : _HeroShimmer(height: heroHeight),
             ),
           ),
           // ── Plus de Flash Ticker ici ─────────────────────
@@ -567,7 +583,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               ),
             )
           else
-            ..._buildMixedLayout(filtered.length > 6 ? filtered.sublist(6) : filtered, ctx),
+            ..._buildMixedLayout(filtered.length > 6 ? filtered.sublist(6) : filtered, ctx, heroHeight),
           if (!isOnline)
             SliverToBoxAdapter(
               child: Padding(
@@ -713,67 +729,80 @@ class _HorizontalArticleStrip extends ConsumerWidget {
               ),
             ),
           ),
-          SizedBox(
-            height: 175,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: articles.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-                final article = articles[index];
-                final source = sourcesMap[article.sourceId];
-                final sourceColor = source?.color ?? AppColors.primaryGreen;
-                return GestureDetector(
-                  onTap: () => context.push(
-                    '/article/${Uri.encodeComponent(article.id)}',
-                    extra: {'article': article.toJson()},
-                  ),
-                  child: SizedBox(
-                    width: 160,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: AspectRatio(
-                            aspectRatio: 16 / 9,
-                            child: BonoboArticleImage(
-                              imageUrl: article.imageUrl,
-                              width: 160,
-                              height: 90,
-                              fit: BoxFit.cover,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Largeur de carte : 44 % de l'écran, entre 130 et 180 px
+              final cardW = (constraints.maxWidth * 0.44).clamp(130.0, 180.0);
+              // Hauteur du strip = image (16:9) + texte (≈60px)
+              final imgH = cardW * 9 / 16;
+              final stripH = imgH + 62;
+              return SizedBox(
+                height: stripH,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: articles.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final article = articles[index];
+                    final source = sourcesMap[article.sourceId];
+                    final sourceColor = source?.color ?? AppColors.primaryGreen;
+                    return GestureDetector(
+                      onTap: () => context.push(
+                        '/article/${Uri.encodeComponent(article.id)}',
+                        extra: {'article': article.toJson()},
+                      ),
+                      child: SizedBox(
+                        width: cardW,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: AspectRatio(
+                                aspectRatio: 16 / 9,
+                                child: BonoboArticleImage(
+                                  imageUrl: article.imageUrl,
+                                  width: cardW,
+                                  height: imgH,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            Text(
+                              article.title,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                height: 1.25,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : AppColors.textPrimary,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              article.sourceName,
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: sourceColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          article.title,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            height: 1.25,
-                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.textPrimary,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          article.sourceName,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: sourceColor,
-                          ),
-                          maxLines: 1,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -1562,12 +1591,12 @@ class _EmptyFeed extends StatelessWidget {
 }
 
 class _LoadingBody extends StatelessWidget {
-  final double statusBarH;
-  const _LoadingBody({required this.statusBarH});
+  final double heroHeight;
+  const _LoadingBody({required this.heroHeight});
 
   @override
   Widget build(BuildContext context) {
-    return _HeroShimmer(height: _kHeroHeight + statusBarH + kToolbarHeight);
+    return _HeroShimmer(height: heroHeight);
   }
 }
 

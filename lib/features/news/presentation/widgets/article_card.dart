@@ -36,7 +36,7 @@ class ArticleCard extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────
-//  ArticleGridCard — High-end E-commerce Style
+//  ArticleGridCard — High-end E-commerce Style, responsive
 // ─────────────────────────────────────────────
 class ArticleGridCard extends ConsumerWidget {
   final FeedNews article;
@@ -49,6 +49,11 @@ class ArticleGridCard extends ConsumerWidget {
     final sources = ref.watch(mediaSourcesMapProvider);
     final source = sources[article.sourceId];
     final sourceColor = source?.color ?? AppColors.primaryGreen;
+    final screenW = MediaQuery.sizeOf(context).width;
+    // Taille adaptée à la taille du tile (la grille a 2 colonnes + 16+14+16 px de padding)
+    final tileW = (screenW - 46) / 2;
+    // Hauteur image : 55 % du tile width, adaptatif
+    final imgH = (tileW * 0.70).clamp(90.0, 160.0);
 
     return GestureDetector(
       onTap: () => context.push(
@@ -57,137 +62,113 @@ class ArticleGridCard extends ConsumerWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Image Container
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  BonoboArticleImage(
-                    imageUrl: article.imageUrl,
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                  // Gradient overlay for bottom tag
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.4)],
-                          stops: const [0.7, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Source Tag
-                  Positioned(
-                    bottom: 10,
-                    left: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: sourceColor,
-                        borderRadius: BorderRadius.circular(6),
-                        boxShadow: [
-                          BoxShadow(color: sourceColor.withValues(alpha: 0.3), blurRadius: 6)
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            source?.name.toUpperCase() ?? article.sourceName.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          if (source?.certificationIcon != null) ...[
-                            const SizedBox(width: 4),
-                            Icon(
-                              source!.certificationIcon,
-                              size: 10,
-                              color: Colors.white,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Content
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  article.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    height: 1.3,
-                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+          // Image Container — hauteur calculée, pas Expanded
+          Container(
+            width: double.infinity,
+            height: imgH,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time_filled_rounded,
-                      size: 11,
-                      color: AppColors.primaryGreenStart.withValues(alpha: 0.8),
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        DateFormatter.relative(article.publishedAt).toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                BonoboArticleImage(
+                  imageUrl: article.imageUrl,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.45)],
+                        stops: const [0.65, 1.0],
                       ),
                     ),
-                    const Spacer(),
-                    Icon(
-                      Icons.bookmark_border_rounded,
-                      size: 16,
-                      color: isDark ? Colors.white30 : Colors.black12,
+                  ),
+                ),
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: sourceColor,
+                      borderRadius: BorderRadius.circular(5),
                     ),
-                  ],
+                    child: Text(
+                      (source?.name ?? article.sourceName).toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 7,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Text(
+              article.title,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                height: 1.35,
+                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.access_time_filled_rounded,
+                  size: 10,
+                  color: AppColors.primaryGreenStart.withValues(alpha: 0.8),
+                ),
+                const SizedBox(width: 3),
+                Flexible(
+                  child: Text(
+                    DateFormatter.relative(article.publishedAt).toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
@@ -231,22 +212,27 @@ class ArticleListCard extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            // Image vignette
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))
-                ],
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: BonoboArticleImage(
-                imageUrl: article.imageUrl,
-                width: 90,
-                height: 90,
-                fit: BoxFit.cover,
-              ),
-            ),
+            // Image vignette — taille adaptée à l'écran
+            Builder(builder: (context) {
+              final imgSz = (MediaQuery.sizeOf(context).width * 0.22).clamp(72.0, 100.0);
+              return Container(
+                width: imgSz,
+                height: imgSz,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: BonoboArticleImage(
+                  imageUrl: article.imageUrl,
+                  width: imgSz,
+                  height: imgSz,
+                  fit: BoxFit.cover,
+                ),
+              );
+            }),
             const SizedBox(width: 16),
             // Contenu
             Expanded(
@@ -346,6 +332,9 @@ class ArticleFeaturedCard extends ConsumerWidget {
     final source = sources[article.sourceId];
     final sourceColor = source?.color ?? AppColors.primaryGreen;
 
+    // Hauteur de la featured card : 28 % de la hauteur d'écran, entre 180 et 280 px
+    final featH = (MediaQuery.sizeOf(context).height * 0.28).clamp(180.0, 280.0);
+
     return GestureDetector(
       onTap: () => context.push(
         '/article/${Uri.encodeComponent(article.id)}',
@@ -353,7 +342,7 @@ class ArticleFeaturedCard extends ConsumerWidget {
       ),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        height: 240,
+        height: featH,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           boxShadow: [

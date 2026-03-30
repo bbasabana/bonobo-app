@@ -2,12 +2,18 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/constants/app_config.dart';
+import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/widgets/bonobo_soft_toast.dart';
 
 import '../../../core/constants/app_colors.dart';
 
 /// Modal « Devenir média source » — Wizard 3 étapes.
 /// Compatible light/dark mode, scroll interne, keyboard-safe.
-class DevenirMediaSourceModal extends StatefulWidget {
+class DevenirMediaSourceModal extends ConsumerStatefulWidget {
   const DevenirMediaSourceModal({super.key});
 
   static Future<void> show(BuildContext context) {
@@ -21,12 +27,12 @@ class DevenirMediaSourceModal extends StatefulWidget {
   }
 
   @override
-  State<DevenirMediaSourceModal> createState() => _DevenirMediaSourceModalState();
+  ConsumerState<DevenirMediaSourceModal> createState() => _DevenirMediaSourceModalState();
 }
 
 enum _FeedStatus { idle, analyzing, valid, invalid }
 
-class _DevenirMediaSourceModalState extends State<DevenirMediaSourceModal>
+class _DevenirMediaSourceModalState extends ConsumerState<DevenirMediaSourceModal>
     with TickerProviderStateMixin {
 
   int _step = 0;
@@ -177,13 +183,50 @@ class _DevenirMediaSourceModalState extends State<DevenirMediaSourceModal>
     return true;
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
       setState(() => _emailError = 'Email invalide');
       return;
     }
-    setState(() { _emailError = null; _submitted = true; });
+    setState(() => _emailError = null);
+
+    final auth = ref.read(authProvider);
+    if (!auth.isAuthenticated) {
+      BonoboSoftToast.show(context, 
+        message: 'Vous devez être connecté pour soumettre un média.',
+        icon: Icons.lock_outline_rounded,
+        iconColor: Colors.orangeAccent
+      );
+      return;
+    }
+
+    try {
+      final data = {
+        'siteName': _nameController.text.trim(),
+        'feedUrl': _urlController.text.trim(),
+        'contactEmail': email,
+        'cmsType': _fluxType,
+        'userId': auth.userId,
+        // Categories can be added if backend supports it, but currently it doesn't seem to store them in site_requests
+      };
+
+      final response = await _dio.post('${AppConfig.apiBaseUrl}/api/v1/sites/submit', data: data);
+      
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        setState(() => _submitted = true);
+      } else {
+        throw 'Erreur lors de la soumission (${response.statusCode})';
+      }
+    } catch (e) {
+      if (mounted) {
+        BonoboSoftToast.show(context,
+          message: 'Une erreur est survenue lors de la soumission.',
+          icon: Icons.error_outline_rounded,
+          iconColor: Colors.redAccent,
+        );
+      }
+    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -194,6 +237,8 @@ class _DevenirMediaSourceModalState extends State<DevenirMediaSourceModal>
     final keyboardH = MediaQuery.of(context).viewInsets.bottom;
     final screenH = MediaQuery.of(context).size.height;
 
+    final auth = ref.watch(authProvider);
+
     return Container(
       decoration: BoxDecoration(
         color: bg,
@@ -202,7 +247,61 @@ class _DevenirMediaSourceModalState extends State<DevenirMediaSourceModal>
       // Hauteur max = 90% de l'écran, keyboard-safe
       constraints: BoxConstraints(maxHeight: screenH * 0.9),
       padding: EdgeInsets.only(bottom: keyboardH),
-      child: _submitted ? _buildSuccess(isDark) : _buildWizard(isDark),
+      child: !auth.isAuthenticated 
+          ? _buildAuthRequired(isDark)
+          : (_submitted ? _buildSuccess(isDark) : _buildWizard(isDark)),
+    );
+  }
+
+  Widget _buildAuthRequired(bool isDark) {
+    final textColor = isDark ? Colors.white : AppColors.textPrimary;
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.lock_person_rounded, color: Colors.orangeAccent, size: 40),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Connexion requise',
+            style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Vous devez être connecté pour soumettre un média et suivre l\'état de votre demande.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: isDark ? Colors.white60 : AppColors.textSecondary, height: 1.5),
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                context.push('/compte');
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text('Se connecter / S\'inscrire', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Plus tard', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
+          ),
+        ],
+      ),
     );
   }
 
